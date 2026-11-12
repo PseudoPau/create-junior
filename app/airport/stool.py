@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.domain.models import DesignManifest, PartSpec
+from app.domain.models import DesignManifest, JoinerySpec, PartSpec
 
 
 class DesignIncomplete(ValueError):
@@ -73,6 +73,15 @@ def derive_stool_parts(manifest: DesignManifest) -> list[PartSpec]:
             grain_direction="length",
         ),
     ]
+
+
+def derive_stool_proposal(manifest: DesignManifest) -> tuple[list[PartSpec], list[JoinerySpec]]:
+    parts = derive_stool_parts(manifest)
+    joinery = [
+        JoinerySpec(id="seat_left", kind="unknown", part_ids=["seat", "side_left"]),
+        JoinerySpec(id="seat_right", kind="unknown", part_ids=["seat", "side_right"]),
+    ]
+    return parts, joinery
 
 
 def build_box_plan(manifest: DesignManifest, scene_units_per_mm: float) -> dict:

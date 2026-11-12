@@ -1,4 +1,4 @@
-from app.airport.stool import DesignIncomplete, build_box_plan, derive_stool_parts
+from app.airport.stool import DesignIncomplete, build_box_plan, derive_stool_parts, derive_stool_proposal
 from app.domain.models import DesignManifest, MaterialSpec, UserProfile
 
 
@@ -35,3 +35,11 @@ def test_derive_stool_parts_from_dimensions():
     assert [part.id for part in parts] == ["seat", "side_left", "side_right"]
     assert parts[0].dimensions_mm["height"] == 25
     assert parts[1].dimensions_mm["height"] == 395
+
+
+def test_derive_stool_proposal_exposes_joinery_as_unconfirmed():
+    parts, joinery = derive_stool_proposal(manifest())
+
+    assert len(parts) == 3
+    assert [joint.status for joint in joinery] == ["candidate", "candidate"]
+    assert all(joint.kind == "unknown" for joint in joinery)

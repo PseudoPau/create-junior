@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from app.analysis.models import ReferenceAnalysis
 from app.airport.client import AirportToolError, AirportUnavailable, McpAirportClient
 from app.airport.orchestrator import commit_stool
+from app.airport.stool import DesignIncomplete, derive_stool_proposal
 from app.analysis.provider import configured_analyzer
 from app.domain.models import DesignManifest, ReferenceSource
 from app.domain.validation import validate_manifest
@@ -144,6 +145,22 @@ def validate_project(project_id: UUID) -> DesignManifest:
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Project not found") from exc
     manifest.validation = validate_manifest(manifest)
+    manifest.version += 1
+    return store.save(manifest)
+
+
+@app.post("/api/projects/{project_id}/proposal", response_model=DesignManifest)
+def generate_structure_proposal(project_id: UUID) -> DesignManifest:
+    try:
+        manifest = store.load(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    try:
+        parts, joinery = derive_stool_proposal(manifest)
+    except DesignIncomplete as exc:
+        raise HTTPException(status_code=409, detail={"code": "DESIGN_INCOMPLETE", "message": str(exc)}) from exc
+    manifest.parts = parts
+    manifest.joinery = joinery
     manifest.version += 1
     return store.save(manifest)
 @app.post("/api/projects/{project_id}/analyze", response_model=ReferenceAnalysis)
