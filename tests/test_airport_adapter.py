@@ -1,4 +1,4 @@
-from app.airport.stool import DesignIncomplete, build_box_plan
+from app.airport.stool import DesignIncomplete, build_box_plan, derive_stool_parts
 from app.domain.models import DesignManifest, MaterialSpec, UserProfile
 
 
@@ -27,3 +27,11 @@ def test_build_box_plan_requires_confirmed_dimensions():
         assert "seat_height_mm" in str(error)
     else:
         raise AssertionError("incomplete design should not create Airport geometry")
+
+
+def test_derive_stool_parts_from_dimensions():
+    parts = derive_stool_parts(manifest())
+
+    assert [part.id for part in parts] == ["seat", "side_left", "side_right"]
+    assert parts[0].dimensions_mm["height"] == 25
+    assert parts[1].dimensions_mm["height"] == 395

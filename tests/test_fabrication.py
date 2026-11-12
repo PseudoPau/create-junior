@@ -15,11 +15,24 @@ def test_fabrication_package_contains_drawings_and_assembly_steps():
     package = build_fabrication_package(manifest)
 
     assert package.manifest_version == 1
-    assert package.status == "ready"
+    assert package.status == "incomplete"
     assert package.cut_list[0].dimensions_mm["width"] == 360
     assert package.drawings[0].status == "ready"
     assert "<svg" in package.drawings[0].svg
     assert len(package.assembly_steps) == 3
+
+
+def test_dimension_only_manifest_derives_stool_parts_but_marks_joinery_incomplete():
+    manifest = DesignManifest(
+        user_profile=UserProfile(seat_height_mm=420, seat_width_mm=360, seat_depth_mm=380),
+        materials={"main": MaterialSpec(kind="solid_wood", name="pine", stock_thickness_mm=25)},
+    )
+
+    package = build_fabrication_package(manifest)
+
+    assert len(package.cut_list) == 3
+    assert package.status == "incomplete"
+    assert package.cut_list[0].part_id == "seat"
 
 
 def test_incomplete_part_is_visible_in_package():

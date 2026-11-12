@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.domain.models import DesignManifest
+from app.domain.models import DesignManifest, PartSpec
 
 
 class DesignIncomplete(ValueError):
@@ -39,6 +39,40 @@ def dimensions_from_manifest(manifest: DesignManifest) -> StoolDimensions:
         seat_depth_mm=profile.seat_depth_mm,
         stock_thickness_mm=material.stock_thickness_mm,
     )
+
+
+def derive_stool_parts(manifest: DesignManifest) -> list[PartSpec]:
+    dimensions = dimensions_from_manifest(manifest)
+    side_height = dimensions.seat_height_mm - dimensions.stock_thickness_mm
+    if side_height <= 0:
+        raise DesignIncomplete("Seat height must exceed stock thickness")
+    side_width = max(dimensions.stock_thickness_mm * 2, 50.0)
+    return [
+        PartSpec(
+            id="seat",
+            name="Seat",
+            kind="seat_board",
+            dimensions_mm={"width": dimensions.seat_width_mm, "depth": dimensions.seat_depth_mm, "height": dimensions.stock_thickness_mm},
+            material_ref="main",
+            grain_direction="length",
+        ),
+        PartSpec(
+            id="side_left",
+            name="Side Left",
+            kind="side_panel",
+            dimensions_mm={"width": side_width, "depth": dimensions.seat_depth_mm, "height": side_height},
+            material_ref="main",
+            grain_direction="length",
+        ),
+        PartSpec(
+            id="side_right",
+            name="Side Right",
+            kind="side_panel",
+            dimensions_mm={"width": side_width, "depth": dimensions.seat_depth_mm, "height": side_height},
+            material_ref="main",
+            grain_direction="length",
+        ),
+    ]
 
 
 def build_box_plan(manifest: DesignManifest, scene_units_per_mm: float) -> dict:

@@ -8,6 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.airport.stool import DesignIncomplete, derive_stool_parts
 from app.domain.models import DesignManifest, PartSpec, ValidationIssue
 from app.domain.validation import validate_manifest
 
@@ -64,10 +65,15 @@ def _drawing_svg(part: PartSpec) -> str:
 
 def build_fabrication_package(manifest: DesignManifest) -> FabricationPackage:
     validation = validate_manifest(manifest)
+    try:
+        parts = manifest.parts or derive_stool_parts(manifest)
+    except DesignIncomplete as exc:
+        parts = []
+        validation.append(ValidationIssue(severity="unknown", code="parts_not_derived", message=str(exc)))
     drawings: list[PartDrawing] = []
     cut_list: list[CutListItem] = []
-    status: Literal["ready", "incomplete"] = "ready"
-    for part in manifest.parts:
+    status: Literal["ready", "incomplete"] = "ready" if parts else "incomplete"
+    for part in parts:
         missing = [name for name in ("width", "height") if name not in part.dimensions_mm]
         if missing:
             status = "incomplete"
@@ -95,10 +101,13 @@ def build_fabrication_package(manifest: DesignManifest) -> FabricationPackage:
         f"{joint.id}: {joint.kind}，连接 {', '.join(joint.part_ids)}，状态 {joint.status}。"
         for joint in manifest.joinery
     ]
+    if not manifest.joinery:
+        joinery_notes.append("接合方式尚未确认，当前加工包不能作为最终施工依据。")
+        status = "incomplete"
     assembly_steps = [
-        AssemblyStep(order=1, title="核对部件", instruction="按部件编号核对数量、尺寸和木纹方向。", part_ids=[part.id for part in manifest.parts]),
-        AssemblyStep(order=2, title="试装接合", instruction="不涂胶先试装所有接合，确认方向和间隙。", part_ids=[part.id for part in manifest.parts]),
-        AssemblyStep(order=3, title="完成固定", instruction="按已确认的接合说明完成固定，并检查椅面水平。", part_ids=[part.id for part in manifest.parts]),
+        AssemblyStep(order=1, title="核对部件", instruction="按部件编号核对数量、尺寸和木纹方向。", part_ids=[part.id for part in parts]),
+        AssemblyStep(order=2, title="试装接合", instruction="不涂胶先试装所有接合，确认方向和间隙。", part_ids=[part.id for part in parts]),
+        AssemblyStep(order=3, title="完成固定", instruction="按已确认的接合说明完成固定，并检查椅面水平。", part_ids=[part.id for part in parts]),
     ]
     return FabricationPackage(
         project_id=manifest.project_id,
@@ -110,3 +119,5 @@ def build_fabrication_package(manifest: DesignManifest) -> FabricationPackage:
         assembly_steps=assembly_steps,
         validation=validation,
     )
+
+
