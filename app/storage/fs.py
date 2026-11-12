@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from uuid import UUID
 
+from app.analysis.models import ReferenceAnalysis
 from app.domain.models import DesignManifest
 
 
@@ -38,3 +39,16 @@ class ProjectStore:
         target = asset_dir / safe_name
         target.write_bytes(content)
         return str(target.relative_to(self.root))
+
+    def analysis_path(self, project_id: UUID) -> Path:
+        return self.project_dir(project_id) / "analysis.json"
+
+    def save_analysis(self, analysis: ReferenceAnalysis) -> ReferenceAnalysis:
+        path = self.analysis_path(analysis.project_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(analysis.model_dump_json(indent=2), encoding="utf-8")
+        return analysis
+
+    def load_analysis(self, project_id: UUID) -> ReferenceAnalysis:
+        path = self.analysis_path(project_id)
+        return ReferenceAnalysis.model_validate(json.loads(path.read_text(encoding="utf-8")))

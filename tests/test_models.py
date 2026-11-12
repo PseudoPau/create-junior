@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.analysis.models import ReferenceAnalysis
 from app.domain.models import DesignManifest, MaterialSpec, PartSpec
 from app.main import app
 from app.storage.fs import ProjectStore
@@ -56,3 +57,23 @@ def test_reference_url_and_file_are_recorded(tmp_path: Path):
         assert (tmp_path / str(project_id) / "references" / "chair.jpg").read_bytes() == b"fake-image"
     finally:
         store.root = original_root
+
+
+def test_draft_analysis_is_explicitly_unfinished(tmp_path: Path):
+    client = TestClient(app)
+    from app.main import store
+    original_root = store.root
+    store.root = tmp_path
+    try:
+        created = client.post("/api/projects", json={"name": "Analysis test"})
+        project_id = created.json()["project_id"]
+        analysis = client.post(f"/api/projects/{project_id}/analyze")
+
+        assert analysis.status_code == 200
+        assert analysis.json()["status"] == "draft"
+        assert analysis.json()["provider"] == "draft"
+        assert "视觉模型" in analysis.json()["summary"]
+        assert ReferenceAnalysis.model_validate(analysis.json()).project_id == project_id
+    finally:
+        store.root = original_root
+

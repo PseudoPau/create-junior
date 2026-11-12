@@ -8,12 +8,15 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 
+from app.analysis.models import ReferenceAnalysis
+from app.analysis.provider import DraftReferenceAnalyzer
 from app.domain.models import DesignManifest, ReferenceSource
 from app.storage.fs import ProjectStore
 
 
 app = FastAPI(title="Create Junior", version="0.1.0")
 store = ProjectStore()
+analyzer = DraftReferenceAnalyzer()
 web_root = Path(__file__).resolve().parents[1] / "web"
 
 
@@ -83,3 +86,21 @@ async def upload_reference_file(
     )
     manifest.version += 1
     return store.save(manifest)
+
+
+@app.post("/api/projects/{project_id}/analyze", response_model=ReferenceAnalysis)
+async def analyze_references(project_id: UUID) -> ReferenceAnalysis:
+    try:
+        manifest = store.load(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    analysis = await analyzer.analyze(manifest)
+    return store.save_analysis(analysis)
+
+
+@app.get("/api/projects/{project_id}/analysis", response_model=ReferenceAnalysis)
+def get_analysis(project_id: UUID) -> ReferenceAnalysis:
+    try:
+        return store.load_analysis(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Analysis not found") from exc
