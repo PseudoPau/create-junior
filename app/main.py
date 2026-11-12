@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from app.analysis.models import ReferenceAnalysis
 from app.analysis.provider import configured_analyzer
 from app.domain.models import DesignManifest, ReferenceSource
+from app.domain.validation import validate_manifest
 from app.storage.fs import ProjectStore
 
 
@@ -88,6 +89,15 @@ async def upload_reference_file(
     return store.save(manifest)
 
 
+@app.post("/api/projects/{project_id}/validate", response_model=DesignManifest)
+def validate_project(project_id: UUID) -> DesignManifest:
+    try:
+        manifest = store.load(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    manifest.validation = validate_manifest(manifest)
+    manifest.version += 1
+    return store.save(manifest)
 @app.post("/api/projects/{project_id}/analyze", response_model=ReferenceAnalysis)
 async def analyze_references(project_id: UUID) -> ReferenceAnalysis:
     try:
@@ -104,5 +114,7 @@ def get_analysis(project_id: UUID) -> ReferenceAnalysis:
         return store.load_analysis(project_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Analysis not found") from exc
+
+
 
 
