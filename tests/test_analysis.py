@@ -22,7 +22,7 @@ def test_openai_compatible_request_contains_evidence_guardrails():
     assert request["model"] == "vision-model"
     assert request["response_format"] == {"type": "json_object"}
     assert "unknowns" in request["messages"][0]["content"]
-    assert "aa-stool" in request["messages"][1]["content"]
+    assert "aa-stool" in request["messages"][1]["content"][0]["text"]
 
 
 def test_openai_compatible_response_becomes_reference_analysis():
@@ -58,3 +58,4 @@ def test_openai_compatible_response_becomes_reference_analysis():
 def test_ai_configuration_requires_all_connection_values():
     with pytest.raises(AIConfigurationError):
         OpenAICompatibleAnalyzer("", "secret", "model")
+

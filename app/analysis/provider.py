@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
+from pathlib import Path
 from typing import Any, Protocol
 
 import httpx
 
 from app.analysis.models import ReferenceAnalysis
-from app.domain.models import DesignManifest
+from app.domain.models import DesignManifest, ReferenceSource
 
 
 class ReferenceAnalyzer(Protocol):
@@ -47,6 +49,7 @@ class OpenAICompatibleAnalyzer:
         api_key: str,
         model: str,
         client: httpx.AsyncClient | None = None,
+        asset_root: Path | None = None,
     ) -> None:
         if not base_url or not api_key or not model:
             raise AIConfigurationError("AI base URL, API key and model are required")
@@ -54,24 +57,33 @@ class OpenAICompatibleAnalyzer:
         self.api_key = api_key
         self.model = model
         self.client = client
+        self.asset_root = asset_root
 
     @classmethod
-    def from_environment(cls) -> "OpenAICompatibleAnalyzer":
+    def from_environment(cls, asset_root: Path | None = None) -> "OpenAICompatibleAnalyzer":
         return cls(
             base_url=os.getenv("CREATE_JUNIOR_AI_BASE_URL", ""),
             api_key=os.getenv("CREATE_JUNIOR_AI_API_KEY", ""),
             model=os.getenv("CREATE_JUNIOR_AI_MODEL", ""),
+            asset_root=asset_root,
         )
+
+    def _image_part(self, source: ReferenceSource) -> dict[str, Any] | None:
+        if source.kind != "image":
+            return None
+        if source.asset_path and self.asset_root:
+            path = self.asset_root / source.asset_path
+            if path.is_file():
+                encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+                media_type = source.media_type or "image/jpeg"
+                return {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{encoded}"}}
+        if source.uri.startswith(("http://", "https://")):
+            return {"type": "image_url", "image_url": {"url": source.uri}}
+        return None
 
     def build_request(self, manifest: DesignManifest) -> dict[str, Any]:
         sources = [
-            {
-                "id": source.id,
-                "kind": source.kind,
-                "uri": source.uri,
-                "title": source.title,
-                "description": source.description,
-            }
+            {"id": source.id, "kind": source.kind, "uri": source.uri, "title": source.title, "description": source.description}
             for source in manifest.reference_sources
         ]
         schema_hint = {
@@ -81,6 +93,16 @@ class OpenAICompatibleAnalyzer:
             "joinery": [{"kind": "half_lap|dowel|screw|unknown", "part_names": ["string"], "rationale": "string", "confidence": "confirmed|estimated|unknown"}],
             "unknowns": ["string"],
         }
+        content: list[dict[str, Any]] = [
+            {
+                "type": "text",
+                "text": json.dumps(
+                    {"project_name": manifest.name, "references": sources, "existing_evidence": [e.model_dump() for e in manifest.evidence]},
+                    ensure_ascii=False,
+                ),
+            }
+        ]
+        content.extend(part for source in manifest.reference_sources if (part := self._image_part(source)))
         return {
             "model": self.model,
             "temperature": 0.1,
@@ -94,13 +116,7 @@ class OpenAICompatibleAnalyzer:
                         f"JSON 结构提示：{json.dumps(schema_hint, ensure_ascii=False)}"
                     ),
                 },
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {"project_name": manifest.name, "references": sources, "existing_evidence": [e.model_dump() for e in manifest.evidence]},
-                        ensure_ascii=False,
-                    ),
-                },
+                {"role": "user", "content": content},
             ],
         }
 
@@ -115,6 +131,8 @@ class OpenAICompatibleAnalyzer:
             response.raise_for_status()
             payload = response.json()
             content = payload["choices"][0]["message"]["content"]
+            if isinstance(content, list):
+                content = "".join(item.get("text", "") for item in content if isinstance(item, dict))
             parsed = json.loads(content) if isinstance(content, str) else content
             return ReferenceAnalysis.model_validate({
                 **parsed,
@@ -137,8 +155,8 @@ class OpenAICompatibleAnalyzer:
                 await client.aclose()
 
 
-def configured_analyzer() -> ReferenceAnalyzer:
+def configured_analyzer(asset_root: Path | None = None) -> ReferenceAnalyzer:
     names = ("CREATE_JUNIOR_AI_BASE_URL", "CREATE_JUNIOR_AI_API_KEY", "CREATE_JUNIOR_AI_MODEL")
     if all(os.getenv(name) for name in names):
-        return OpenAICompatibleAnalyzer.from_environment()
+        return OpenAICompatibleAnalyzer.from_environment(asset_root)
     return DraftReferenceAnalyzer()

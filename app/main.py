@@ -16,7 +16,7 @@ from app.storage.fs import ProjectStore
 
 app = FastAPI(title="Create Junior", version="0.1.0")
 store = ProjectStore()
-analyzer = configured_analyzer()
+analyzer = configured_analyzer(store.root)
 web_root = Path(__file__).resolve().parents[1] / "web"
 
 
@@ -104,4 +104,5 @@ def get_analysis(project_id: UUID) -> ReferenceAnalysis:
         return store.load_analysis(project_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Analysis not found") from exc
+
 
