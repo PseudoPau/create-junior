@@ -9,6 +9,8 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 
 from app.analysis.models import ReferenceAnalysis
+from app.airport.client import AirportToolError, AirportUnavailable, McpAirportClient
+from app.airport.orchestrator import commit_stool
 from app.analysis.provider import configured_analyzer
 from app.domain.models import DesignManifest, ReferenceSource
 from app.domain.validation import validate_manifest
@@ -91,6 +93,32 @@ async def upload_reference_file(
     return store.save(manifest)
 
 
+@app.get("/api/airport/status")
+async def airport_status() -> dict:
+    client = McpAirportClient()
+    try:
+        return {"status": "ready", "url": client.url, "details": await client.status()}
+    except (AirportUnavailable, AirportToolError) as exc:
+        return {"status": "unavailable", "url": client.url, "message": str(exc)}
+
+
+@app.post("/api/projects/{project_id}/airport/commit")
+async def commit_project_to_airport(project_id: UUID) -> dict:
+    try:
+        manifest = store.load(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    issues = validate_manifest(manifest)
+    blocking = [issue for issue in issues if issue.severity == "unknown"]
+    if blocking:
+        raise HTTPException(status_code=409, detail={"message": "Design needs confirmation before Airport commit", "issues": [issue.model_dump() for issue in blocking]})
+    try:
+        result = await commit_stool(McpAirportClient(), manifest)
+    except AirportUnavailable as exc:
+        raise HTTPException(status_code=503, detail={"code": "AIRPORT_UNAVAILABLE", "message": str(exc), "local_outputs_available": True}) from exc
+    except AirportToolError as exc:
+        raise HTTPException(status_code=502, detail={"code": "AIRPORT_TOOL_ERROR", "message": str(exc), "local_outputs_available": True}) from exc
+    return {"status": "committed", "project_id": str(project_id), "result": result}
 @app.get("/api/projects/{project_id}/fabrication-package", response_model=FabricationPackage)
 def get_fabrication_package(project_id: UUID) -> FabricationPackage:
     try:
@@ -132,6 +160,8 @@ def get_analysis(project_id: UUID) -> ReferenceAnalysis:
         return store.load_analysis(project_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Analysis not found") from exc
+
+
 
 
 
