@@ -73,7 +73,8 @@ def test_draft_analysis_is_explicitly_unfinished(tmp_path: Path):
         assert analysis.json()["status"] == "draft"
         assert analysis.json()["provider"] == "draft"
         assert "视觉模型" in analysis.json()["summary"]
-        assert ReferenceAnalysis.model_validate(analysis.json()).project_id == project_id
+        assert str(ReferenceAnalysis.model_validate(analysis.json()).project_id) == project_id
     finally:
         store.root = original_root
+
 
