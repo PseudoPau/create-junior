@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Create Junior</title>
+    <style>
+      :root { color-scheme: light; --ink: #24231f; --paper: #f7f3eb; --card: #fffdf8; --accent: #ed6b3a; --muted: #817c72; --line: #e5ded2; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+      header { display: flex; align-items: center; justify-content: space-between; padding: 18px 28px; border-bottom: 1px solid var(--line); background: rgba(255,253,248,.88); }
+      .brand { font-weight: 800; letter-spacing: .02em; }
+      .brand span { color: var(--accent); }
+      main { display: grid; grid-template-columns: 190px minmax(0, 1fr) 300px; gap: 20px; min-height: calc(100vh - 70px); padding: 24px; }
+      nav, section, aside { min-width: 0; }
+      nav { display: grid; align-content: start; gap: 8px; }
+      nav button { border: 0; border-radius: 14px; padding: 12px 14px; text-align: left; background: transparent; color: var(--muted); cursor: pointer; }
+      nav button.active { background: #f2d8c8; color: var(--ink); font-weight: 700; }
+      .hero { display: grid; place-items: center; min-height: 430px; border: 1px dashed #c9bcae; border-radius: 26px; background: radial-gradient(circle at 30% 20%, #fffdf8, #eee3d5); text-align: center; }
+      .hero h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 52px); letter-spacing: -.04em; }
+      .hero p { max-width: 440px; margin: 0 auto 22px; color: var(--muted); }
+      .primary { border: 0; border-radius: 999px; padding: 12px 18px; background: var(--accent); color: white; font-weight: 700; cursor: pointer; }
+      .card { padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); box-shadow: 0 10px 30px rgba(64,44,24,.05); }
+      aside { display: grid; align-content: start; gap: 14px; }
+      .status { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; }
+      .pill { border-radius: 999px; padding: 4px 9px; background: #efe8dc; color: #6f6253; font-size: 12px; }
+      @media (max-width: 900px) { main { grid-template-columns: 1fr; } nav { grid-template-columns: repeat(3, 1fr); } }
+    </style>
+  </head>
+  <body>
+    <header><div class="brand">Create <span>Junior</span></div><div class="status"><span>AA Stool v0</span><span class="pill">骨架阶段</span></div></header>
+    <main>
+      <nav aria-label="项目模块">
+        <button class="active">参考</button><button>尺寸</button><button>材料</button><button>结构</button><button>验证</button><button>加工包</button>
+      </nav>
+      <section>
+        <div class="hero">
+          <div>
+            <div style="font-size: 56px; margin-bottom: 8px">🪑</div>
+            <h1>从一张参考图开始</h1>
+            <p>把喜欢的家具结构，改成适合你的版本，再得到一份真正能动手制作的加工包。</p>
+            <button class="primary">粘贴链接或上传图片</button>
+          </div>
+        </div>
+      </section>
+      <aside>
+        <div class="card"><strong>下一步</strong><p style="margin-bottom: 0; color: var(--muted)">导入一个参考网页或图片，开始识别结构。</p></div>
+        <div class="card"><strong>项目原则</strong><p style="margin-bottom: 0; color: var(--muted)">AI 提建议，你来确认；每个尺寸都能追溯和撤销。</p></div>
+      </aside>
+    </main>
+  </body>
+</html>

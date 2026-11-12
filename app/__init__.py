@@ -1,0 +1,1 @@
+"""Create Junior application package."""
