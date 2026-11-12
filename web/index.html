@@ -1,52 +1,44 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Create Junior</title>
-    <style>
-      :root { color-scheme: light; --ink: #24231f; --paper: #f7f3eb; --card: #fffdf8; --accent: #ed6b3a; --muted: #817c72; --line: #e5ded2; }
-      * { box-sizing: border-box; }
-      body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-      header { display: flex; align-items: center; justify-content: space-between; padding: 18px 28px; border-bottom: 1px solid var(--line); background: rgba(255,253,248,.88); }
-      .brand { font-weight: 800; letter-spacing: .02em; }
-      .brand span { color: var(--accent); }
-      main { display: grid; grid-template-columns: 190px minmax(0, 1fr) 300px; gap: 20px; min-height: calc(100vh - 70px); padding: 24px; }
-      nav, section, aside { min-width: 0; }
-      nav { display: grid; align-content: start; gap: 8px; }
-      nav button { border: 0; border-radius: 14px; padding: 12px 14px; text-align: left; background: transparent; color: var(--muted); cursor: pointer; }
-      nav button.active { background: #f2d8c8; color: var(--ink); font-weight: 700; }
-      .hero { display: grid; place-items: center; min-height: 430px; border: 1px dashed #c9bcae; border-radius: 26px; background: radial-gradient(circle at 30% 20%, #fffdf8, #eee3d5); text-align: center; }
-      .hero h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 52px); letter-spacing: -.04em; }
-      .hero p { max-width: 440px; margin: 0 auto 22px; color: var(--muted); }
-      .primary { border: 0; border-radius: 999px; padding: 12px 18px; background: var(--accent); color: white; font-weight: 700; cursor: pointer; }
-      .card { padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); box-shadow: 0 10px 30px rgba(64,44,24,.05); }
-      aside { display: grid; align-content: start; gap: 14px; }
-      .status { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; }
-      .pill { border-radius: 999px; padding: 4px 9px; background: #efe8dc; color: #6f6253; font-size: 12px; }
-      @media (max-width: 900px) { main { grid-template-columns: 1fr; } nav { grid-template-columns: repeat(3, 1fr); } }
-    </style>
-  </head>
-  <body>
-    <header><div class="brand">Create <span>Junior</span></div><div class="status"><span>AA Stool v0</span><span class="pill">骨架阶段</span></div></header>
-    <main>
-      <nav aria-label="项目模块">
-        <button class="active">参考</button><button>尺寸</button><button>材料</button><button>结构</button><button>验证</button><button>加工包</button>
-      </nav>
-      <section>
-        <div class="hero">
-          <div>
-            <div style="font-size: 56px; margin-bottom: 8px">🪑</div>
-            <h1>从一张参考图开始</h1>
-            <p>把喜欢的家具结构，改成适合你的版本，再得到一份真正能动手制作的加工包。</p>
-            <button class="primary">粘贴链接或上传图片</button>
-          </div>
-        </div>
-      </section>
-      <aside>
-        <div class="card"><strong>下一步</strong><p style="margin-bottom: 0; color: var(--muted)">导入一个参考网页或图片，开始识别结构。</p></div>
-        <div class="card"><strong>项目原则</strong><p style="margin-bottom: 0; color: var(--muted)">AI 提建议，你来确认；每个尺寸都能追溯和撤销。</p></div>
-      </aside>
-    </main>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Create Junior</title>
+  <link rel="stylesheet" href="/static/web.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">Create <span>Junior</span></div>
+    <div class="top-actions"><span id="project-pill" class="pill">新项目</span><button id="airport-button" class="quiet">检查 Airport</button></div>
+  </header>
+  <main>
+    <nav aria-label="项目模块">
+      <button class="nav-button active" data-module="reference">参考</button>
+      <button class="nav-button" data-module="dimensions">尺寸</button>
+      <button class="nav-button" data-module="materials">材料</button>
+      <button class="nav-button" data-module="structure">结构</button>
+      <button class="nav-button" data-module="validation">验证</button>
+      <button class="nav-button" data-module="package">加工包</button>
+    </nav>
+    <section class="stage">
+      <div class="stage-head"><div><h1 id="stage-title">从一张参考图开始</h1><p id="stage-subtitle">把喜欢的家具结构，改成适合你的版本。</p></div><span id="stage-status" class="pill">未开始</span></div>
+      <div id="module-reference" class="module">
+        <div class="hero"><div><div class="chair-icon">🪑</div><h2>先把灵感放进来</h2><p>粘贴产品网页，或者拖入一张图片。AI 只提出结构候选，你来确认。</p><div class="button-row center"><button id="add-url" class="primary">粘贴网页链接</button><label class="secondary upload"><input id="image-input" type="file" accept="image/*" hidden>上传图片</label><button id="analyze" class="quiet">开始分析</button></div><div id="reference-message" class="message"></div></div></div>
+        <div class="card source-card"><div class="side-title"><h3>参考来源</h3><span id="source-count" class="pill">0</span></div><div id="source-list" class="source-list"><div class="message">还没有参考资料。</div></div></div>
+      </div>
+      <div id="module-dimensions" class="module hidden"><div class="card"><h2>把尺寸改成你的</h2><p class="muted">先填写最关键的身体和使用尺寸，后续部件和加工资料都会跟着更新。</p><div class="form-grid"><label>座高 mm<input id="seat-height" type="number" min="1" placeholder="420"></label><label>座宽 mm<input id="seat-width" type="number" min="1" placeholder="360"></label><label>座深 mm<input id="seat-depth" type="number" min="1" placeholder="380"></label><label>身高 mm（可选）<input id="user-height" type="number" min="1" placeholder="1750"></label><label>预估载荷 kg<input id="load" type="number" min="1" placeholder="80"></label></div><div class="button-row"><button id="save-dimensions" class="primary">保存尺寸</button></div><div id="dimensions-message" class="message"></div></div></div>
+      <div id="module-materials" class="module hidden"><div class="card"><h2>选一块适合你的材料</h2><p class="muted">内置参数是保守估计，可以覆盖。系统会把来源和假设写进验证结果。</p><div class="form-grid"><label>材料<select id="material-name"><option value="pine">松木</option><option value="beech">山毛榉</option><option value="oak">橡木</option><option value="plywood">胶合板</option><option value="local wood">自定义材料</option></select></label><label>料厚 mm<input id="stock-thickness" type="number" min="1" placeholder="25"></label></div><div class="button-row"><button id="save-material" class="primary">保存材料</button></div><div id="materials-message" class="message"></div></div></div>
+      <div id="module-structure" class="module hidden"><div class="card"><h2>先看懂结构，再确认方案</h2><p class="muted">AI 的观察和未知项都会保留。未知内容不会自动写进 3D 模型。</p><pre id="analysis-result" class="result">还没有分析结果。</pre><div class="button-row"><button id="run-analysis-structure" class="primary">重新分析参考</button></div></div></div>
+      <div id="module-validation" class="module hidden"><div class="card"><h2>检查设计</h2><p class="muted">先做尺寸、材料、接合和初步承载筛查；这不是工程安全认证。</p><div class="button-row"><button id="validate" class="primary">运行木作检查</button><button id="load-estimate" class="secondary">查看承载估算</button></div><pre id="validation-result" class="result hidden"></pre></div></div>
+      <div id="module-package" class="module hidden"><div class="card"><h2>拿到可以动手的资料</h2><p class="muted">从当前设计版本生成部件表、尺寸图、接合说明和装配步骤。</p><div class="button-row"><button id="build-package" class="primary">生成加工包</button><button id="commit-airport" class="secondary">提交到 Airport</button></div><pre id="package-result" class="result hidden"></pre></div></div>
+    </section>
+    <aside>
+      <div class="card"><div class="side-title"><h3>项目状态</h3><span id="version" class="pill">v1</span></div><div class="status-list"><div><span>参考</span><strong id="status-reference">未开始</strong></div><div><span>尺寸</span><strong id="status-dimensions">待填写</strong></div><div><span>材料</span><strong id="status-materials">待选择</strong></div><div><span>验证</span><strong id="status-validation">未运行</strong></div><div><span>加工包</span><strong id="status-package">未生成</strong></div></div></div>
+      <div class="card"><h3>AI 建议</h3><p id="suggestion" class="muted">AI 会在当前模块里解释观察、影响和未知项。</p></div>
+      <div class="card"><h3>本地优先</h3><p class="muted">Airport 或 AI 暂时不可用时，项目仍保存在本机，已有资料仍可导出。</p></div>
+    </aside>
+  </main>
+  <script src="/static/app.js" defer></script>
+</body>
 </html>
+

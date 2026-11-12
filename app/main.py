@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.analysis.models import ReferenceAnalysis
 from app.airport.client import AirportToolError, AirportUnavailable, McpAirportClient
@@ -23,6 +24,7 @@ app = FastAPI(title="Create Junior", version="0.1.0")
 store = ProjectStore()
 analyzer = configured_analyzer(store.root)
 web_root = Path(__file__).resolve().parents[1] / "web"
+app.mount('/static', StaticFiles(directory=web_root), name='static')
 
 
 @app.get("/", response_class=FileResponse)
@@ -160,6 +162,8 @@ def get_analysis(project_id: UUID) -> ReferenceAnalysis:
         return store.load_analysis(project_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Analysis not found") from exc
+
+
 
 
 
