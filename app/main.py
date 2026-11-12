@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 
-from app.domain.models import DesignManifest
+from app.domain.models import DesignManifest, ReferenceSource
 from app.storage.fs import ProjectStore
 
 
@@ -45,4 +45,41 @@ def get_project(project_id: UUID) -> DesignManifest:
 def update_manifest(project_id: UUID, manifest: DesignManifest) -> DesignManifest:
     if manifest.project_id != project_id:
         raise HTTPException(status_code=400, detail="Project id does not match manifest")
+    return store.save(manifest)
+
+
+@app.post("/api/projects/{project_id}/references", response_model=DesignManifest)
+def add_reference(project_id: UUID, source: ReferenceSource) -> DesignManifest:
+    try:
+        manifest = store.load(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    manifest.reference_sources.append(source)
+    manifest.version += 1
+    return store.save(manifest)
+
+
+@app.post("/api/projects/{project_id}/reference-file", response_model=DesignManifest)
+async def upload_reference_file(
+    project_id: UUID,
+    request: Request,
+    filename: str = Query(default="reference-image"),
+) -> DesignManifest:
+    try:
+        manifest = store.load(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    content = await request.body()
+    if not content:
+        raise HTTPException(status_code=400, detail="Reference file is empty")
+    asset_path = store.save_reference(project_id, filename, content)
+    manifest.reference_sources.append(
+        ReferenceSource(
+            kind="image",
+            uri=asset_path,
+            asset_path=asset_path,
+            media_type=request.headers.get("content-type"),
+        )
+    )
+    manifest.version += 1
     return store.save(manifest)

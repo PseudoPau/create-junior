@@ -10,10 +10,13 @@ from pydantic import BaseModel, Field
 
 
 class ReferenceSource(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
     kind: Literal["url", "image"]
     uri: str
     title: str | None = None
     description: str | None = None
+    media_type: str | None = None
+    asset_path: str | None = None
 
 
 class Evidence(BaseModel):
