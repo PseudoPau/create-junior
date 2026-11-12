@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
@@ -55,8 +56,23 @@ def get_project(project_id: UUID) -> DesignManifest:
 
 @app.put("/api/projects/{project_id}/manifest", response_model=DesignManifest)
 def update_manifest(project_id: UUID, manifest: DesignManifest) -> DesignManifest:
+    try:
+        previous = store.load(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
     if manifest.project_id != project_id:
         raise HTTPException(status_code=400, detail="Project id does not match manifest")
+    design_inputs_changed = (
+        manifest.user_profile != previous.user_profile
+        or manifest.materials != previous.materials
+        or manifest.reference_sources != previous.reference_sources
+    )
+    if design_inputs_changed:
+        manifest.parts = []
+        manifest.joinery = []
+        manifest.validation = []
+    manifest.version = max(manifest.version, previous.version) + 1
+    manifest.updated_at = datetime.now(timezone.utc)
     return store.save(manifest)
 
 
