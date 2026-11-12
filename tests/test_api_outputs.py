@@ -1,4 +1,6 @@
 from pathlib import Path
+from zipfile import ZipFile
+from io import BytesIO
 
 from fastapi.testclient import TestClient
 
@@ -25,5 +27,10 @@ def test_project_outputs_include_fabrication_and_load_estimate(tmp_path: Path):
         assert package.json()["cut_list"][0]["part_id"] == "seat"
         assert estimate.status_code == 200
         assert estimate.json()["material_name"]
+
+        download = client.get(f"/api/projects/{project_id}/fabrication-package/download")
+        assert download.status_code == 200
+        with ZipFile(BytesIO(download.content)) as archive:
+            assert {"manifest.json", "fabrication-package.json", "README.txt"}.issubset(archive.namelist())
     finally:
         store.root = original_root

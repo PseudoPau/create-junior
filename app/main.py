@@ -6,7 +6,7 @@ from pathlib import Path
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.analysis.models import ReferenceAnalysis
@@ -17,6 +17,7 @@ from app.analysis.provider import configured_analyzer
 from app.domain.models import DesignManifest, ReferenceSource
 from app.domain.validation import validate_manifest
 from app.fabrication.package import FabricationPackage, build_fabrication_package
+from app.fabrication.export import build_fabrication_archive
 from app.materials.library import LoadEstimate, estimate_seat_load
 from app.storage.fs import ProjectStore
 
@@ -99,6 +100,8 @@ async def upload_reference_file(
 @app.get("/api/airport/status")
 async def airport_status() -> dict:
     client = McpAirportClient()
+    if not client.is_reachable():
+        return {"status": "unavailable", "url": client.url, "message": "Airport MCP endpoint is not listening", "local_outputs_available": True}
     try:
         return {"status": "ready", "url": client.url, "details": await client.status()}
     except (AirportUnavailable, AirportToolError) as exc:
@@ -129,6 +132,20 @@ def get_fabrication_package(project_id: UUID) -> FabricationPackage:
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Project not found") from exc
     return build_fabrication_package(manifest)
+
+
+@app.get("/api/projects/{project_id}/fabrication-package/download")
+def download_fabrication_package(project_id: UUID) -> Response:
+    try:
+        manifest = store.load(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    _, archive = build_fabrication_archive(manifest)
+    return Response(
+        content=archive,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="create-junior-{project_id}.zip"'},
+    )
 
 
 @app.get("/api/projects/{project_id}/load-estimate", response_model=LoadEstimate)
