@@ -12,6 +12,8 @@ from app.analysis.models import ReferenceAnalysis
 from app.analysis.provider import configured_analyzer
 from app.domain.models import DesignManifest, ReferenceSource
 from app.domain.validation import validate_manifest
+from app.fabrication.package import FabricationPackage, build_fabrication_package
+from app.materials.library import LoadEstimate, estimate_seat_load
 from app.storage.fs import ProjectStore
 
 
@@ -89,6 +91,22 @@ async def upload_reference_file(
     return store.save(manifest)
 
 
+@app.get("/api/projects/{project_id}/fabrication-package", response_model=FabricationPackage)
+def get_fabrication_package(project_id: UUID) -> FabricationPackage:
+    try:
+        manifest = store.load(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    return build_fabrication_package(manifest)
+
+
+@app.get("/api/projects/{project_id}/load-estimate", response_model=LoadEstimate)
+def get_load_estimate(project_id: UUID) -> LoadEstimate:
+    try:
+        manifest = store.load(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    return estimate_seat_load(manifest)
 @app.post("/api/projects/{project_id}/validate", response_model=DesignManifest)
 def validate_project(project_id: UUID) -> DesignManifest:
     try:
@@ -114,6 +132,8 @@ def get_analysis(project_id: UUID) -> ReferenceAnalysis:
         return store.load_analysis(project_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Analysis not found") from exc
+
+
 
 
 
