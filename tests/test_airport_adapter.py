@@ -1,0 +1,29 @@
+from app.airport.stool import DesignIncomplete, build_box_plan
+from app.domain.models import DesignManifest, MaterialSpec, UserProfile
+
+
+def manifest():
+    return DesignManifest(
+        name="AA Stool",
+        user_profile=UserProfile(seat_height_mm=420, seat_width_mm=360, seat_depth_mm=380),
+        materials={"main": MaterialSpec(kind="solid_wood", name="Pine", stock_thickness_mm=25)},
+    )
+
+
+def test_build_box_plan_uses_scene_units():
+    plan = build_box_plan(manifest(), 0.001)
+
+    assert plan["parts"][0]["name"] == "Seat"
+    assert plan["parts"][0]["max"] == [0.18, 0.19, 0.42]
+    assert len(plan["parts"]) == 3
+
+
+def test_build_box_plan_requires_confirmed_dimensions():
+    incomplete = DesignManifest(materials={"main": MaterialSpec(stock_thickness_mm=25)})
+
+    try:
+        build_box_plan(incomplete, 0.001)
+    except DesignIncomplete as error:
+        assert "seat_height_mm" in str(error)
+    else:
+        raise AssertionError("incomplete design should not create Airport geometry")
