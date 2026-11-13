@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Create Junior · 工作台原型</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Create <span>Junior</span></div>
+    <div class="project-title"><strong>AA Stool / 石卷风格椅子</strong><span class="status-dot"></span><span id="save-state">已保存 · v3</span></div>
+    <div class="top-actions"><button class="top-button" data-panel="design">设计</button><button class="top-button" data-action="export">导出</button><button class="avatar">W</button></div>
+  </header>
+
+  <main class="workspace">
+    <aside class="left-rail">
+      <section class="rail-section issue-section">
+        <div class="section-title"><span>当前问题</span><span class="count">3</span></div>
+        <button class="issue blocker selected" data-issue="joint"><span class="issue-mark">!</span><span><strong>接合方式待确认</strong><small>座面 · 左侧板</small></span></button>
+        <button class="issue blocker" data-issue="load"><span class="issue-mark">!</span><span><strong>承载估算未完成</strong><small>需要确认预估载荷</small></span></button>
+        <button class="issue notice" data-issue="grain"><span class="issue-mark">i</span><span><strong>木纹方向未指定</strong><small>建议沿板件长度</small></span></button>
+      </section>
+      <section class="rail-section">
+        <div class="section-title"><span>参考资料</span><button class="tiny-button" data-panel="reference">管理</button></div>
+        <div class="reference-thumb active"><span class="thumb-art">AA</span><span><strong>AA Stool</strong><small>网页参考 · 3 张图片</small></span></div>
+        <button class="add-reference" data-panel="reference">+ 添加网页或图片</button>
+      </section>
+      <section class="rail-section history-section">
+        <div class="section-title"><span>设计版本</span><button class="tiny-button">查看</button></div>
+        <div class="history-row"><span class="history-line current"></span><span><strong>v3 当前设计</strong><small>确认尺寸 · 2 分钟前</small></span></div>
+        <div class="history-row"><span class="history-line"></span><span><strong>v2 结构候选</strong><small>生成 3 个部件</small></span></div>
+      </section>
+    </aside>
+
+    <section class="stage">
+      <div class="stage-toolbar"><div><span class="eyebrow" id="stage-eyebrow">参考已导入 · 结构候选未确认</span><h1 id="stage-title">先把喜欢的椅子看懂</h1></div><div class="toolbar-actions"><button class="icon-button" data-action="undo">撤销</button><button class="icon-button" data-action="redo">重做</button><button class="primary-button locked" id="commit-button" data-action="commit">提交 Airport</button></div></div>
+      <div class="canvas" id="canvas">
+        <div class="reference-empty" id="reference-state">
+          <div class="reference-board"><div class="board-label">REFERENCE BOARD</div><div class="board-chair"><span class="board-seat"></span><span class="board-side left"></span><span class="board-side right"></span><span class="board-note n1">两个侧板</span><span class="board-note n2">座面厚度约 25 mm</span></div></div>
+          <div class="canvas-caption"><strong>参考资料已整理</strong><span>AI 识别出简洁的座面 + 双侧板结构。先生成候选，再决定是否采用。</span><button class="primary-button" data-action="generate">生成结构候选</button></div>
+        </div>
+        <div class="model-state hidden" id="model-state">
+          <div class="model-grid"><div class="model-side left"></div><div class="model-seat"></div><div class="model-side right"></div><span class="dimension-label width-label">360 mm</span><span class="dimension-label height-label">420 mm</span><span class="selection-ring"></span></div>
+          <div class="model-caption"><div><span class="eyebrow">结构候选 · v3 draft</span><strong>双侧板座椅</strong><span>座面 360 × 380 × 25 mm · 侧板 395 × 380 × 50 mm</span></div><button class="primary-button" data-action="confirm">确认设计</button></div>
+        </div>
+        <div class="airport-state hidden" id="airport-state"><div class="airport-preview"><div class="model-grid small"><div class="model-side left"></div><div class="model-seat"></div><div class="model-side right"></div></div><span class="preview-badge">Airport 预览</span></div><div class="preview-info"><span class="eyebrow">已提交 · 等待验证</span><h2>模型已进入 Airport</h2><p>可以继续在本地修改；下一次提交会生成新的版本。</p><button class="secondary-button" data-action="back-model">返回设计</button></div></div>
+      </div>
+      <div class="command-bar"><div class="command-icon">⌘</div><input id="command-input" placeholder="告诉 AI 你想怎么改，例如：把座高改成 430 mm" /><button class="send-button" data-action="command">发送</button><div class="quick-actions"><button data-command="生成结构候选">生成候选</button><button data-command="检查这个接合">检查接合</button><button data-command="生成加工包">加工包</button></div></div>
+    </section>
+
+    <aside class="right-panel" id="right-panel">
+      <div class="panel-head"><div><span class="eyebrow" id="panel-kicker">需要你的确认</span><h2 id="panel-title">接合方式</h2></div><button class="close-button" data-action="close-panel">×</button></div>
+      <div id="issue-panel" class="panel-content">
+        <div class="suggestion-card"><div class="card-type blocker-type">阻塞问题</div><h3>座面如何连接侧板？</h3><p>参考图没有足够证据确认连接方式。AI 提出三个候选，选择后才会进入承载估算。</p><div class="option-list"><button class="option selected-option" data-action="select-joint"><span><strong>半搭接</strong><small>侧板开槽，座面嵌入 · 适合板材</small></span><span class="radio"></span></button><button class="option" data-action="select-joint"><span><strong>圆榫</strong><small>需要定位和钻孔工具</small></span><span class="radio"></span></button><button class="option" data-action="select-joint"><span><strong>螺钉</strong><small>最容易加工，但需要处理露头</small></span><span class="radio"></span></button></div><button class="primary-button full" data-action="apply-joint">应用半搭接</button><button class="text-button" data-action="evidence">查看参考证据 →</button></div>
+        <div class="ai-card"><div class="card-type ai-type">AI 建议</div><p>如果你希望保留石卷工房的简洁外观，半搭接可以隐藏五金，但需要更准确的开槽尺寸。</p><button class="text-button" data-command="解释这个建议">解释这个建议 →</button></div>
+      </div>
+      <div id="design-panel" class="panel-content hidden"><div class="section-block"><div class="section-title"><span>整体尺寸</span><span class="confirmed">已确认</span></div><label>座高 <input value="420" data-field="seat-height" /> <span>mm</span></label><label>座宽 <input value="360" data-field="seat-width" /> <span>mm</span></label><label>座深 <input value="380" data-field="seat-depth" /> <span>mm</span></label><button class="secondary-button full" data-action="save-dimensions">更新模型</button></div><div class="section-block"><div class="section-title"><span>材料</span><span class="confirmed">松木 · 25 mm</span></div><p class="muted">保守材料参数已进入承载估算。</p><button class="text-button" data-panel="material">更换材料 →</button></div></div>
+      <div id="package-panel" class="panel-content hidden"><div class="package-status"><span class="lock-icon">□</span><strong>确认设计后解锁</strong><p>加工包会包含部件表、尺寸图、接合说明和装配步骤。</p></div><div class="package-preview"><div><span>部件</span><strong>3</strong></div><div><span>图纸</span><strong>3</strong></div><div><span>装配步骤</span><strong>3</strong></div></div><button class="primary-button full locked">生成加工包</button></div>
+    </aside>
+  </main>
+  <div class="toast hidden" id="toast"></div>
+  <script src="./app.js"></script>
+</body>
+</html>
