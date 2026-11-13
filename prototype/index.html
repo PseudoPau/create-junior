@@ -21,15 +21,14 @@
         <button class="issue blocker" data-issue="load"><span class="issue-mark">!</span><span><strong>承载估算未完成</strong><small>需要确认预估载荷</small></span></button>
         <button class="issue notice" data-issue="grain"><span class="issue-mark">i</span><span><strong>木纹方向未指定</strong><small>建议沿板件长度</small></span></button>
       </section>
-      <section class="rail-section">
-        <div class="section-title"><span>参考资料</span><button class="tiny-button" data-panel="reference">管理</button></div>
-        <div class="reference-thumb active"><span class="thumb-art">AA</span><span><strong>AA Stool</strong><small>网页参考 · 3 张图片</small></span></div>
-        <button class="add-reference" data-panel="reference">+ 添加网页或图片</button>
+      <section class="rail-section ai-section">
+        <div class="section-title"><span>AI 建议</span><span class="count ai-count">2</span></div>
+        <div class="left-ai-card"><div class="card-type ai-type">结构观察</div><p>参考图更像两个侧板承托座面，建议先确认接合方式。</p><button class="text-button" data-action="focus-joint">查看建议 →</button></div>
+        <div class="left-ai-card"><div class="card-type ai-type">下一步</div><p>确认设计后可以生成加工包。</p><button class="text-button" data-action="focus-package">查看加工包 →</button></div>
       </section>
-      <section class="rail-section history-section">
-        <div class="section-title"><span>设计版本</span><button class="tiny-button">查看</button></div>
-        <div class="history-row"><span class="history-line current"></span><span><strong>v3 当前设计</strong><small>确认尺寸 · 2 分钟前</small></span></div>
-        <div class="history-row"><span class="history-line"></span><span><strong>v2 结构候选</strong><small>生成 3 个部件</small></span></div>
+      <section class="rail-section">
+        <div class="section-title"><span>快捷动作</span></div>
+        <button class="add-reference" data-action="focus-reference">查看参考资料</button>
       </section>
     </aside>
 
@@ -50,14 +49,12 @@
     </section>
 
     <aside class="right-panel" id="right-panel">
-      <div class="panel-head"><div><span class="eyebrow" id="panel-kicker">需要你的确认</span><h2 id="panel-title">接合方式</h2></div><button class="close-button" data-action="close-panel">×</button></div>
-      <div id="issue-panel" class="panel-content">
-        <div class="suggestion-card"><div class="card-type blocker-type">阻塞问题</div><h3>座面如何连接侧板？</h3><p>参考图没有足够证据确认连接方式。AI 提出三个候选，选择后才会进入承载估算。</p><div class="option-list"><button class="option selected-option" data-action="select-joint"><span><strong>半搭接</strong><small>侧板开槽，座面嵌入 · 适合板材</small></span><span class="radio"></span></button><button class="option" data-action="select-joint"><span><strong>圆榫</strong><small>需要定位和钻孔工具</small></span><span class="radio"></span></button><button class="option" data-action="select-joint"><span><strong>螺钉</strong><small>最容易加工，但需要处理露头</small></span><span class="radio"></span></button></div><button class="primary-button full" data-action="apply-joint">应用半搭接</button><button class="text-button" data-action="evidence">查看参考证据 →</button></div>
-        <div class="ai-card"><div class="card-type ai-type">AI 建议</div><p>如果你希望保留石卷工房的简洁外观，半搭接可以隐藏五金，但需要更准确的开槽尺寸。</p><button class="text-button" data-command="解释这个建议">解释这个建议 →</button></div>
-      </div>
-      <div id="reference-panel" class="panel-content hidden"><div class="suggestion-card"><div class="card-type ai-type">参考资料</div><h3>AA Stool · 3 张图片</h3><p>AI 已从参考图中提取出座面、双侧板和简洁外观线索。未知信息会保留在当前问题区。</p><button class="secondary-button full" data-action="analyze-reference">重新分析参考</button></div></div>
-      <div id="design-panel" class="panel-content hidden"><div class="section-block"><div class="section-title"><span>整体尺寸</span><span class="confirmed">已确认</span></div><label>座高 <input value="420" data-field="seat-height" /> <span>mm</span></label><label>座宽 <input value="360" data-field="seat-width" /> <span>mm</span></label><label>座深 <input value="380" data-field="seat-depth" /> <span>mm</span></label><button class="secondary-button full" data-action="save-dimensions">更新模型</button></div><div class="section-block"><div class="section-title"><span>材料</span><span class="confirmed">松木 · 25 mm</span></div><p class="muted">保守材料参数已进入承载估算。</p><button class="text-button" data-panel="material">更换材料 →</button></div></div>
-      <div id="package-panel" class="panel-content hidden"><div class="package-status"><span class="lock-icon">□</span><strong id="package-status-title">确认设计后解锁</strong><p>加工包会包含部件表、尺寸图、接合说明和装配步骤。</p></div><div class="package-preview"><div><span>部件</span><strong>3</strong></div><div><span>图纸</span><strong>3</strong></div><div><span>装配步骤</span><strong>3</strong></div></div><button class="primary-button full locked" id="package-button" data-action="package">生成加工包</button></div>
+      <div class="panel-head"><div><span class="eyebrow">项目上下文</span><h2>资料与对象</h2></div><button class="close-button" data-action="close-panel">×</button></div>
+      <div class="right-tabs"><button class="right-tab active" data-right-tab="reference">参考</button><button class="right-tab" data-right-tab="versions">版本</button><button class="right-tab" data-right-tab="layers">图层</button><button class="right-tab" data-right-tab="lists">清单</button></div>
+      <div class="right-context" data-right-content="reference"><div class="context-heading"><span>参考资料</span><button class="tiny-button">管理</button></div><div class="reference-thumb active"><span class="thumb-art">AA</span><span><strong>AA Stool</strong><small>网页参考 · 3 张图片</small></span></div><div class="evidence-row"><span class="evidence-dot"></span><span><strong>双侧板承托座面</strong><small>AI 观察 · 置信度中</small></span></div><div class="evidence-row"><span class="evidence-dot unknown"></span><span><strong>接合方式</strong><small>尚未从图片确认</small></span></div><button class="add-reference">+ 添加网页或图片</button></div>
+      <div class="right-context hidden" data-right-content="versions"><div class="context-heading"><span>设计版本</span><button class="tiny-button">比较</button></div><div class="version-row current"><span>v3</span><span><strong>结构候选</strong><small>当前 · 未确认</small></span></div><div class="version-row"><span>v2</span><span><strong>参考分析</strong><small>生成 3 个部件</small></span></div><div class="version-row"><span>v1</span><span><strong>空项目</strong><small>创建于今天</small></span></div></div>
+      <div class="right-context hidden" data-right-content="layers"><div class="context-heading"><span>图层</span><button class="tiny-button">全部显示</button></div><button class="layer-row selected"><span class="layer-eye">●</span><span><strong>座面</strong><small>seat · 360 × 380 × 25 mm</small></span></button><button class="layer-row"><span class="layer-eye">●</span><span><strong>左侧板</strong><small>side_left · 松木</small></span></button><button class="layer-row"><span class="layer-eye">●</span><span><strong>右侧板</strong><small>side_right · 松木</small></span></button></div>
+      <div class="right-context hidden" data-right-content="lists"><div class="context-heading"><span>清单</span><button class="tiny-button">展开</button></div><div class="check-row done"><span>✓</span><span>参考资料已整理</span></div><div class="check-row done"><span>✓</span><span>尺寸已填写</span></div><div class="check-row pending"><span>!</span><span>接合方式待确认</span></div><div class="check-row pending"><span>!</span><span>承载估算待完成</span></div><div class="check-row locked-row"><span>□</span><span>加工包（确认设计后）</span></div></div>
     </aside>
   </main>
   <div class="toast hidden" id="toast"></div>
