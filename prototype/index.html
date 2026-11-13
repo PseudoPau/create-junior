@@ -15,23 +15,16 @@
 
   <main class="workspace">
     <aside class="left-rail">
-      <section class="rail-section todo-section">
-        <div class="section-title"><span>Todo / 当前流程</span><span class="count">2 / 5</span></div>
-        <button class="todo done" data-step="reference"><span class="todo-mark">✓</span><span><strong>整理参考资料</strong><small>网页和图片已导入</small></span></button>
-        <button class="todo current selected" data-step="structure"><span class="todo-mark">2</span><span><strong>确认结构候选</strong><small>正在进行</small></span></button>
-        <button class="todo" data-step="dimensions"><span class="todo-mark">3</span><span><strong>确认尺寸与材料</strong><small>待处理</small></span></button>
-        <button class="todo" data-step="validation"><span class="todo-mark">4</span><span><strong>完成木作检查</strong><small>有 2 个关键问题</small></span></button>
-        <button class="todo" data-step="fabrication"><span class="todo-mark">5</span><span><strong>生成加工包</strong><small>确认设计后解锁</small></span></button>
-      </section>
-      <section class="rail-section question-section">
-        <div class="section-title"><span>关键提问</span><span class="count">2</span></div>
-        <button class="question blocker selected" data-issue="joint"><span class="issue-mark">?</span><span><strong>座面怎么连接侧板？</strong><small>会影响开槽和承载</small></span></button>
-        <button class="question blocker" data-issue="load"><span class="issue-mark">?</span><span><strong>预计承重是多少？</strong><small>用于简化估算</small></span></button>
-      </section>
-      <section class="rail-section ai-section">
-        <div class="section-title"><span>AI 建议</span><span class="count ai-count">2</span></div>
-        <div class="left-ai-card"><div class="card-type ai-type">结构观察</div><p>参考图更像两个侧板承托座面，建议先确认接合方式。</p><button class="text-button" data-action="focus-joint">查看建议 →</button></div>
-        <div class="left-ai-card"><div class="card-type ai-type">下一步</div><p>确认设计后可以生成加工包。</p><button class="text-button" data-action="focus-package">查看加工包 →</button></div>
+      <section class="rail-section task-section">
+        <div class="section-title"><span>下一步</span><span class="count">2 / 5</span></div>
+        <button class="task-card done" data-task="reference"><span class="todo-mark">✓</span><span><strong>整理参考资料</strong><small>网页和图片已导入</small></span></button>
+        <div class="task-card current expanded" data-task="joint">
+          <div class="task-summary"><span class="todo-mark">2</span><span><strong>确认座面和侧板的接合方式</strong><small>当前任务 · 阻塞</small></span></div>
+          <div class="task-detail"><p>这个决定会影响开槽、承载估算和加工图。</p><div class="task-ai"><span class="card-type ai-type">AI 建议</span><p>半搭接可以保持石卷工房风格的简洁外观，适合 25 mm 板材。</p></div><div class="task-actions"><button class="primary-button" data-action="apply-joint">采用半搭接</button><button class="text-button" data-action="ask-joint">换一个方案</button></div></div>
+        </div>
+        <button class="task-card" data-task="load"><span class="todo-mark">3</span><span><strong>回答预计承重</strong><small>AI 建议先填 80 kg</small></span></button>
+        <button class="task-card" data-task="dimensions"><span class="todo-mark">4</span><span><strong>确认尺寸与材料</strong><small>座高 420 mm · 松木 25 mm</small></span></button>
+        <button class="task-card" data-task="fabrication"><span class="todo-mark">5</span><span><strong>生成加工包</strong><small>确认设计后解锁</small></span></button>
       </section>
       <section class="rail-section">
         <div class="section-title"><span>快捷动作</span></div>
