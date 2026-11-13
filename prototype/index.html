@@ -15,11 +15,18 @@
 
   <main class="workspace">
     <aside class="left-rail">
-      <section class="rail-section issue-section">
-        <div class="section-title"><span>当前问题</span><span class="count">3</span></div>
-        <button class="issue blocker selected" data-issue="joint"><span class="issue-mark">!</span><span><strong>接合方式待确认</strong><small>座面 · 左侧板</small></span></button>
-        <button class="issue blocker" data-issue="load"><span class="issue-mark">!</span><span><strong>承载估算未完成</strong><small>需要确认预估载荷</small></span></button>
-        <button class="issue notice" data-issue="grain"><span class="issue-mark">i</span><span><strong>木纹方向未指定</strong><small>建议沿板件长度</small></span></button>
+      <section class="rail-section todo-section">
+        <div class="section-title"><span>Todo / 当前流程</span><span class="count">2 / 5</span></div>
+        <button class="todo done" data-step="reference"><span class="todo-mark">✓</span><span><strong>整理参考资料</strong><small>网页和图片已导入</small></span></button>
+        <button class="todo current selected" data-step="structure"><span class="todo-mark">2</span><span><strong>确认结构候选</strong><small>正在进行</small></span></button>
+        <button class="todo" data-step="dimensions"><span class="todo-mark">3</span><span><strong>确认尺寸与材料</strong><small>待处理</small></span></button>
+        <button class="todo" data-step="validation"><span class="todo-mark">4</span><span><strong>完成木作检查</strong><small>有 2 个关键问题</small></span></button>
+        <button class="todo" data-step="fabrication"><span class="todo-mark">5</span><span><strong>生成加工包</strong><small>确认设计后解锁</small></span></button>
+      </section>
+      <section class="rail-section question-section">
+        <div class="section-title"><span>关键提问</span><span class="count">2</span></div>
+        <button class="question blocker selected" data-issue="joint"><span class="issue-mark">?</span><span><strong>座面怎么连接侧板？</strong><small>会影响开槽和承载</small></span></button>
+        <button class="question blocker" data-issue="load"><span class="issue-mark">?</span><span><strong>预计承重是多少？</strong><small>用于简化估算</small></span></button>
       </section>
       <section class="rail-section ai-section">
         <div class="section-title"><span>AI 建议</span><span class="count ai-count">2</span></div>
@@ -35,6 +42,7 @@
     <section class="stage">
       <div class="stage-toolbar"><div><span class="eyebrow" id="stage-eyebrow">参考已导入 · 结构候选未确认</span><h1 id="stage-title">先把喜欢的椅子看懂</h1></div><div class="toolbar-actions"><button class="icon-button" data-action="undo">撤销</button><button class="icon-button" data-action="redo">重做</button><button class="primary-button locked" id="commit-button" data-action="commit">提交 Airport</button></div></div>
       <div class="canvas" id="canvas">
+        <div class="viewport-tools" aria-label="视口工具"><button class="viewport-tool active" data-tool="select">选择</button><button class="viewport-tool" data-tool="orbit">旋转</button><button class="viewport-tool" data-tool="pan">平移</button><button class="viewport-tool" data-tool="zoom">缩放</button><span class="tool-divider"></span><button class="viewport-tool" data-view="front">前视</button><button class="viewport-tool" data-view="top">顶视</button><button class="viewport-tool" data-view="iso">等轴</button></div>
         <div class="reference-empty" id="reference-state">
           <div class="reference-board"><div class="board-label">REFERENCE BOARD</div><div class="board-chair"><span class="board-seat"></span><span class="board-side left"></span><span class="board-side right"></span><span class="board-note n1">两个侧板</span><span class="board-note n2">座面厚度约 25 mm</span></div></div>
           <div class="canvas-caption"><strong>参考资料已整理</strong><span>AI 识别出简洁的座面 + 双侧板结构。先生成候选，再决定是否采用。</span><button class="primary-button" data-action="generate">生成结构候选</button></div>

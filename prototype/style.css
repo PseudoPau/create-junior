@@ -36,3 +36,11 @@ button, input { font:inherit; } button { cursor:pointer; }
 .version-row > span:first-child { width:28px; color:var(--muted); font-weight:700; } .version-row.current { background:#f5f5ef; }
 .layer-row { width:100%; border:0; border-bottom:1px solid var(--line); background:transparent; text-align:left; } .layer-row.selected { background:#f5f5ef; } .layer-eye { width:16px; color:#83a08b; font-size:9px; }
 .check-row { font-size:12px; } .check-row > span:first-child { width:15px; text-align:center; color:#8d938a; } .check-row.done > span:first-child { color:#6e9874; } .check-row.pending > span:first-child { color:var(--accent); } .check-row.locked-row { color:#9b9e96; }
+.todo,.question { width:100%; display:flex; gap:9px; align-items:flex-start; text-align:left; padding:10px 8px; margin:3px 0; border:1px solid transparent; background:transparent; color:var(--ink); border-radius:6px; }
+.todo:hover,.todo.current,.question:hover,.question.selected { background:#f5f5ef; border-color:var(--line); }
+.todo strong,.question strong { display:block; font-size:12px; font-weight:650; } .todo small,.question small { display:block; color:var(--muted); font-size:11px; margin-top:2px; }
+.todo-mark { width:19px; height:19px; border:1px solid #b6bab0; color:var(--muted); border-radius:50%; text-align:center; line-height:18px; font-size:10px; font-weight:800; flex:0 0 auto; }
+.todo.done .todo-mark { background:#e7f0e7; color:#6e9874; border-color:#b7d0ba; } .todo.current .todo-mark { background:var(--accent); color:white; border-color:var(--accent); }
+.question-section { padding-top:2px; } .question .issue-mark { background:var(--accent-soft); color:var(--accent); }
+.viewport-tools { position:absolute; left:18px; top:18px; display:flex; gap:3px; padding:4px; background:rgba(255,255,255,.92); border:1px solid var(--line); z-index:2; }
+.viewport-tool { border:0; background:transparent; color:var(--muted); padding:6px 8px; font-size:11px; border-radius:3px; } .viewport-tool:hover,.viewport-tool.active { background:#f0f0ea; color:var(--ink); font-weight:700; } .tool-divider { width:1px; background:var(--line); margin:3px 2px; }
