@@ -53,6 +53,14 @@ class UnavailableDesigner:
         return {"status": "unavailable", "error": self.reason}
 
 
+class PrototypeDesigner:
+    """Deterministic local provider used to make the prototype flow runnable."""
+    name = "prototype"
+
+    async def generate(self, content: list[dict[str, Any]]) -> dict[str, Any]:
+        return {"status": "prototype"}
+
+
 class OpenAICompatibleDesigner:
     name = "openai_compatible"
 
@@ -92,6 +100,8 @@ def configured_designer() -> DesignerProvider:
         return UnavailableDesigner("当前未启用 AI 提供方；可继续使用本地建模、检查和出包功能。")
     if kind == "session":
         return UnavailableDesigner("当前为会话协作：提交设计请求后，由当前聊天返回候选。")
+    if kind == "prototype":
+        return PrototypeDesigner()
     if kind == "demo":
         return UnavailableDesigner("样例请从体验 CAFE CHAIR 入口打开，它不会分析当前参考。")
     if kind not in {"openai", "openai_compatible"}:
@@ -125,6 +135,17 @@ async def propose(store: WorkbenchStore, project: Project, text: str | None = No
         result = await provider.generate([])
         proposal.update(status="unavailable", error=result.get("error", "AI 提供方不可用。"))
         return proposal
+
+    if provider.name == "prototype":
+        from app.workbench.demo import cafe_candidate
+        ready = cafe_candidate(project)
+        ready.update(
+            purpose="design",
+            source="prototype",
+            provider="prototype",
+            summary="本地原型候选：根据当前参考先建立一把平直板木椅。它用于验证参考→构思→模型→调整的交互，不代表已完成真实图片识别或人体工学核验。",
+        )
+        return ready
 
     if not project.references and text is None:
         proposal.update(status="failed", error="请先添加图片、链接、PDF 或参考说明。")

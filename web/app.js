@@ -140,7 +140,8 @@ function renderGenerationConcept(show) {
   if(!show)return;
   const pending=pendingRequest();
   const card=node('section',{class:'generation-concept-card'},node('span',{class:'eyebrow'},'下一步'),node('h3',{},pending?'设计构思已提交':'展开设计构思'),paragraph(pending?'需求已保存，等待当前聊天返回一版可编辑模型。':'参考已经收到。我会先整理家具类型、主要结构和使用方式，再给你一版可编辑模型。'));
-  if(!pending)card.append(node('div',{class:'generation-concept-actions'},button(state.generating?'正在生成…':'生成可编辑模型 →',generateModel,'primary',state.busy||state.generating),button('补充参考',()=>openReferenceComposer(''),'quiet',state.busy||state.generating)));
+  if(state.generationError)card.append(node('p',{class:'flow-status error'},state.generationError));
+  if(!pending)card.append(node('div',{class:'generation-concept-actions'},button(state.generating?'正在生成…':state.aiStatus?.ready?'生成可编辑模型 →':'提交设计构思',generateModel,'primary',state.busy||!!state.resolvingReference),button('补充参考',()=>openReferenceComposer(''),'quiet',state.busy||!!state.resolvingReference)));
   host.append(card);
 }
 function renderTasks() {
@@ -191,9 +192,9 @@ function renderReferenceTask(body) {
   body.append(refs.length?node('details',{class:'optional-controls'},node('summary',{},'补充参考'),editor):editor);
   if(p.scope==='unsupported')body.append(node('div',{class:'issue'},p.scope_reason||'当前参考超出首版支持范围。'));
   if(pending)body.append(handoffCard());
-  if(pending&&!p.parts?.length)body.append(button('生成可编辑模型 →',generateModel,'primary',state.busy||!!state.resolvingReference));
+  if(pending&&!p.parts?.length)body.append(paragraph('设计构思已提交，等待候选返回。'));
   else if(!pending&&p.parts?.length)body.append(button('看尺寸方案 →',()=>goTask('fit'),'primary'));
-  else if(!pending&&refs.length)body.append(node('div',{class:'flow-next'},paragraph('参考已就位。生成一个可编辑模型候选，再继续调整尺寸和加工条件。'),button('生成可编辑模型 →',generateModel,'primary',state.busy||!!state.resolvingReference)));
+  else if(!pending&&refs.length)body.append(paragraph('参考已就位。回到主画面生成一个可编辑模型候选，再继续调整尺寸和加工条件。'));
 }
 function renderFitTask(body) {
   const p=state.project;
@@ -386,16 +387,16 @@ function renderCandidateActions() {
   const host=$('candidate-actions'),p=state.proposal;host.replaceChildren();host.hidden=p?.status!=='ready';
   if(host.hidden)return;
   const blockers=(p.checks||[]).filter(x=>x.severity==='blocker').length;
-  host.append(node('div',{},node('strong',{},p.source==='demo'?'CAFE CHAIR · 样例候选':'模型候选 · 等待你采用'),node('small',{},(p.patch.parts?.length||state.project.parts.length)+' 个部件 · '+blockers+' 项待完善')),button('采用模型',acceptProposal,'primary',state.busy),button('不采用',dismissProposal,'',state.busy),button('查看依据与检查',()=>setPanel('tasks',true),'quiet'));
+  host.append(node('div',{},node('strong',{},p.source==='demo'?'CAFE CHAIR · 样例候选':p.source==='prototype'?'本地原型候选 · 木质餐椅':'模型候选 · 等待你采用'),node('small',{},(p.patch.parts?.length||state.project.parts.length)+' 个部件 · '+blockers+' 项待完善')),button('采用模型',acceptProposal,'primary',state.busy),button('不采用',dismissProposal,'',state.busy),button('查看依据与检查',()=>setPanel('tasks',true),'quiet'));
 }
 async function beginGeneration() {
-  requireNoProposal();if(state.busy||state.generating)return;
+  requireNoProposal();if(state.busy)return;
   state.generationError='';
   try {if(state.referenceDraft.trim())await saveReferenceText(state.referenceDraft);await generateModel();}
   catch(error){state.generationError=error.message;render();}
 }
 async function generateModel() {
-  requireNoProposal();if(state.busy||state.generating)return;
+  requireNoProposal();if(state.busy)return;
   if(!state.project.references?.length)throw new Error('先添加图片、链接或文字参考。');
   state.generating=true;renderGenerationControls();
   const projectId=state.project.id,revision=state.project.revision;
@@ -464,6 +465,7 @@ async function saveReferenceText(text) {
     state.project=await api(base()+'/references/item',json('POST',{expected_revision:state.project.revision,kind:isLink?'link':'note',...(isLink?{url:text}:{text})}));
     added=state.project.references.at(-1);state.referenceDraft='';state.dirtyForms=false;state.conversationOpen=false;await refreshData();state.activeTask='reference';setPanel('tasks',!!state.project.parts?.length,{persist:false});render();
   });
+  render();
   if(isLink&&added)await resolveReference(added.id);
   return isLink?'链接已保存，读取结果在当前参考任务中。':'参考说明已保存，下一步在当前任务中。';
 }
@@ -937,7 +939,7 @@ function showPage(page) {
 }
 function renderHome() {
   if(document.activeElement!==$('home-input'))$('home-input').value=state.homeDraft;
-  $('home-channel-note').textContent=state.aiStatus?.ready?'在线 AI 已配置：提交后将生成模型候选。':'原型会话协作：先保存需求，再由当前聊天返回可编辑模型。';
+  $('home-channel-note').textContent=state.aiStatus?.mode==='prototype'?'本地原型生成：提交参考后可以直接预览一版候选。':state.aiStatus?.ready?'在线 AI 已配置：提交后将生成模型候选。':'会话协作：先保存需求，再由当前聊天返回可编辑模型。';
   $('home-start').disabled=state.busy||!state.homeDraft.trim();$('home-upload').disabled=state.busy;$('home-demo').disabled=state.busy;
   const list=$('home-project-list');list.replaceChildren();
   for(const item of state.projects){const p=state.projectDetails[item.id],current=item.id===state.project?.id,pending=current&&state.proposal;
@@ -952,7 +954,7 @@ async function beginFromHome({upload=false}={}) {
   try {
     if(!upload&&!state.homeDraft.trim())return;
     const draft=state.homeDraft;await newProject();state.referenceDraft=draft;persistDrafts();render();
-    if(upload)$('reference-input').click();else {await beginGeneration();}
+    if(upload)$('reference-input').click();else {await saveReferenceText(draft);}
     state.homeDraft='';localStorage.removeItem('junior-home-draft');renderHome();
   }catch(error){$('home-error').textContent=error.message;report(error);}
 }
@@ -986,5 +988,6 @@ setInterval(()=>pollInteractions().catch(()=>{}),4000);
       if(route.searchParams.get('view')==='package'&&state.project?.parts?.length)await openPackage();
     }
   } catch(error) {report(error);$('save-state').textContent='连接失败，请确认本地服务已启动';}
+  finally {state.busy=false;state.generating=false;if(state.project)render();}
 
 })();

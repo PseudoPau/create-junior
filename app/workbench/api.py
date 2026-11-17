@@ -157,10 +157,10 @@ def ai_status():
     mode = os.getenv("CREATE_JUNIOR_AI_PROVIDER", "openai_compatible").strip().lower()
     fields = {name: bool(os.getenv("CREATE_JUNIOR_AI_" + name, "").strip())
               for name in ("BASE_URL", "API_KEY", "MODEL")}
-    ready = mode in {"openai", "openai_compatible"} and all(fields.values())
+    ready = mode == "prototype" or (mode in {"openai", "openai_compatible"} and all(fields.values()))
     return {"mode": mode, "ready": ready, "session_available": True,
             "configured": fields, "model": os.getenv("CREATE_JUNIOR_AI_MODEL", "") if ready else "",
-            "label": "在线 AI" if ready else "会话协作" if mode == "session" else "AI 未连接"}
+            "label": "本地原型生成" if mode == "prototype" else "在线 AI" if ready else "会话协作" if mode == "session" else "AI 未连接"}
 
 
 @router.post("/projects/{project_id}/analyze")
