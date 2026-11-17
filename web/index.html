@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Create Junior · 木作工作台</title>
-<link rel="stylesheet" href="/static/web.css?v=r1-3">
-<link rel="stylesheet" href="/static/workspace.css?v=r1-3">
-<link rel="stylesheet" href="/static/guidance.css?v=r1-3">
-<link rel="stylesheet" href="/static/drawing-browser.css?v=r1-3"><link rel="stylesheet" href="/static/product-pages.css?v=r1-3">
+<link rel="stylesheet" href="/static/web.css?v=r1-6">
+<link rel="stylesheet" href="/static/workspace.css?v=r1-6">
+<link rel="stylesheet" href="/static/guidance.css?v=r1-6">
+<link rel="stylesheet" href="/static/drawing-browser.css?v=r1-6"><link rel="stylesheet" href="/static/product-pages.css?v=r1-6">
 <script type="importmap">{"imports":{"three":"/static/vendor/three/three.module.js","three/addons/":"/static/vendor/three/addons/"}}</script>
 </head>
 <body data-page="home">
 <header class="topbar">
   <a class="brand" href="/" id="home-link" aria-label="Create Junior 首页">junior<span class="brand-dot">.</span><small>MAKE IT YOURS</small></a>
   <div class="project-heading"><input id="project-name" aria-label="项目名称" value="我的木椅" maxlength="100"><span id="save-state">正在连接…</span></div>
-  <div class="top-actions"><div class="panel-switches" role="group" aria-label="工作区面板"><button id="toggle-sidebar" class="panel-toggle" aria-label="收起工作侧栏" aria-expanded="true" aria-controls="work-sidebar" title="收起工作侧栏"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M7 3v14M4 7h1M4 10h1M4 13h1"/></svg><span>侧栏</span></button></div><select id="project-switch" aria-label="切换项目"><option value="">选择项目</option></select><button id="ai-settings" class="quiet">会话协作 · 设置</button><button id="new-project" class="quiet">新建</button><button id="undo" class="quiet" title="撤销上一次设计修改" disabled>↶ 撤销</button><button id="package-button" class="primary" disabled>生成加工图纸 ↗</button></div>
+  <div class="top-actions"><div class="panel-switches" role="group" aria-label="工作区面板"><button id="toggle-sidebar" class="panel-toggle" aria-label="收起工作侧栏" aria-expanded="true" aria-controls="work-sidebar" title="收起工作侧栏"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M7 3v14M4 7h1M4 10h1M4 13h1"/></svg><span>侧栏</span></button></div><details id="more-menu" class="more-menu"><summary>更多</summary><div class="more-menu-popover"><button id="more-home" class="more-item">开始新设计</button><button id="more-demo" class="more-item">体验案例</button><label class="more-project">打开项目<select id="project-switch" aria-label="切换项目"><option value="">选择项目</option></select></label><button id="new-project" class="more-item">新建项目</button><button id="undo" class="more-item" title="撤销上一次设计修改" disabled>撤销上一步</button><button id="package-button" class="more-item" disabled>打开制作包</button><button id="ai-settings" class="more-item">设置</button><button id="more-sidebar" class="more-item">显示 / 隐藏侧栏</button></div></details></div>
 </header>
 <section id="home-page" class="product-page home-page" aria-label="开始制作">
   <div class="home-intro"><span class="eyebrow">MAKE IT YOURS</span><h1>喜欢的家具，<br>做成适合你的样子。</h1><p>带来参考，调整到适合你的尺寸，再一起确定材料、连接和制作方式。</p></div>
@@ -21,7 +21,7 @@
   <section class="home-example"><span class="eyebrow">从案例了解流程</span><h2>CAFE CHAIR</h2><div class="sample-drawing" aria-hidden="true"><span class="sample-back"></span><span class="sample-seat"></span><span class="sample-leg"></span><span class="sample-foot"></span></div><p>6 个板件 · 可调整座宽<br>查看连接、五金与装配图纸</p><button id="home-demo">体验这个案例 ↗</button><small>复制为独立项目；加载已有方案，不分析你的参考。</small></section></div>
   <section class="home-projects"><div class="section-title"><h2>我的项目</h2><button id="home-project-refresh" class="quiet">刷新列表</button></div><p class="hint">保存在本机。继续上次的设计、候选与调整要求。</p><div id="home-project-list" class="project-grid"></div></section>
 </section>
-<nav id="workspace-flow" class="workspace-flow" aria-label="设计阶段"><button data-flow="reference">1 参考</button><button data-flow="fit">2 适己</button><button data-flow="make">3 做法</button><button id="flow-drawings">制作包 ↗</button></nav>
+<nav id="workspace-flow" class="workspace-flow" aria-label="当前任务"><button data-flow="reference">参考</button><button data-flow="fit">尺寸</button><button data-flow="make">材料</button><button id="flow-drawings">资料</button></nav>
 <main id="design-page" class="workspace">
   <aside id="work-sidebar" class="work-sidebar" aria-label="项目工作侧栏">
     <div class="sidebar-header"><strong>本次制作</strong><button id="sidebar-canvas" class="quiet">返回模型</button><details id="sidebar-library" class="sidebar-library"><summary>资料 <span aria-hidden="true">⌄</span></summary><nav aria-label="项目资料入口"><button data-tab="references">参考资料</button><button data-tab="versions">设计版本</button><button data-tab="layers">全部部件</button><button data-tab="lists">完整清单</button></nav></details></div>
@@ -66,7 +66,7 @@
     <div class="canvas-footer"><span id="selection-label">尚未选择部件</span><span>中键旋转 · 右键平移 · 滚轮缩放</span><span>mm</span></div>
     <div id="candidate-actions" class="candidate-actions" hidden></div>
     <section id="conversation-panel" class="conversation-panel" aria-label="与 Junior 协作" hidden><header><h2>与 Junior 协作</h2><button id="conversation-close" class="quiet" aria-label="收起对话">收起</button></header><div id="conversation-messages" role="log" aria-live="polite"></div></section>
-    <footer class="command-bar"><button id="conversation-toggle" aria-label="展开对话" aria-expanded="false" aria-controls="conversation-panel">✦</button><form id="command-form"><input id="command-input" autocomplete="off" placeholder="例如：打开下料 / 座板宽度改为420mm" aria-label="自主设计师命令"><button type="submit" class="command-send" aria-label="发送命令">↑</button></form><div id="command-suggestions" class="command-suggestions" aria-label="快捷建议"></div><span id="command-state">自主设计师 · 本地指令 · 会话协作</span></footer>
+    <footer class="command-bar"><button id="conversation-toggle" aria-label="展开对话" aria-expanded="false" aria-controls="conversation-panel">✦</button><form id="command-form"><input id="command-input" autocomplete="off" placeholder="告诉我怎么改，例如：座板宽度改为420mm" aria-label="告诉我怎么改"><button type="submit" class="command-send" aria-label="发送命令">↑</button></form><div id="command-suggestions" class="command-suggestions" aria-label="快捷建议"></div><span id="command-state">告诉我怎么改</span></footer>
   </section>
 </main>
 
@@ -77,6 +77,6 @@
 <dialog id="reference-preview" aria-labelledby="reference-preview-title"><div class="dialog-head"><h2 id="reference-preview-title"></h2><button id="reference-preview-close" aria-label="关闭参考预览">×</button></div><div id="reference-preview-content"></div></dialog>
 <dialog id="ai-dialog" aria-labelledby="ai-title"><div class="dialog-head"><h2 id="ai-title">AI 连接与协作</h2><button id="ai-close" aria-label="关闭 AI 设置">×</button></div><div id="ai-settings-content"></div></dialog>
 <div id="notice" class="notice hidden" role="status"></div>
-<script type="module" src="/static/app.js?v=r1-3"></script>
+<script type="module" src="/static/app.js?v=r1-6"></script>
 </body>
 </html>

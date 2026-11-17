@@ -1,5 +1,16 @@
 /* R1 product surfaces share the existing project and design state. */
 @media screen {
+  .more-menu {position:relative;z-index:30;}
+  .more-menu summary {list-style:none;cursor:pointer;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--muted);font-size:11px;}
+  .more-menu summary::-webkit-details-marker {display:none;}
+  .more-menu[open] summary {color:var(--green);background:var(--soft);}
+  .more-menu-popover {position:absolute;right:0;top:calc(100% + 7px);display:grid;gap:3px;min-width:170px;padding:7px;border:1px solid var(--line);border-radius:10px;background:white;box-shadow:0 8px 25px #25301b20;}
+  .more-item,.more-project {display:block;width:100%;padding:8px 10px;border:0;border-radius:6px;background:transparent;text-align:left;font-size:11px;color:var(--text);}
+  .more-item:hover,.more-project:hover {background:var(--soft);color:var(--green);}
+  .more-project {display:grid;gap:5px;color:var(--muted);}
+  .more-project select {width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;background:white;font-size:11px;}
+  body[data-page=home] .more-menu #more-home,body[data-page=package] .more-menu #more-home {display:none;}
+  body[data-page=home] .more-menu #more-sidebar {display:none;}
   body[data-page=home] .workspace,body[data-page=home] .workspace-flow,body[data-page=package] .workspace,body[data-page=package] .workspace-flow {display:none;}
   body:not([data-page=home]) .home-page,body:not([data-page=package]) .package-page {display:none;}
   body[data-page=home] .project-heading,body[data-page=home] .panel-switches,body[data-page=home] #project-switch,body[data-page=home] #new-project,body[data-page=home] #undo,body[data-page=home] #package-button {display:none;}
@@ -98,3 +109,22 @@
   .top-actions #ai-settings {max-width:none;}
 }
 @media print {.product-page{display:none!important;}}
+
+/* R1 shell: one visible entry point; secondary surfaces live in 更多. */
+@media screen {
+  .top-actions .panel-switches {display:none;}
+  .more-menu {position:relative;z-index:30;}
+  .more-menu summary {list-style:none;cursor:pointer;padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:white;font-size:11px;}
+  .more-menu summary::-webkit-details-marker {display:none;}
+  .more-menu[open] summary {background:var(--soft);color:var(--green);}
+  .more-menu-popover {position:absolute;right:0;top:calc(100% + 7px);display:grid;gap:3px;width:190px;padding:7px;background:white;border:1px solid var(--line);border-radius:11px;box-shadow:0 8px 24px #25301b20;}
+  .more-menu-popover .more-item {border:0;background:transparent;text-align:left;padding:8px 10px;font-size:11px;}
+  .more-menu-popover #new-project,.more-menu-popover #undo,.more-menu-popover #package-button,.more-menu-popover #ai-settings {display:block;max-width:none;font-size:11px;padding:8px 10px;}
+  .more-menu-popover .more-item:hover:not(:disabled) {background:var(--soft);}
+  .more-project {display:grid;gap:4px;padding:7px 10px;font-size:10px;color:var(--muted);}
+  .more-project select {width:100%;font-size:11px;}
+  .home-example,.home-projects {display:none;}
+  body[data-page=home] .home-start-grid {display:block;max-width:700px;}
+  body[data-page=home] .home-compose {max-width:700px;}
+  .workspace-flow button {font-size:11px;}
+}

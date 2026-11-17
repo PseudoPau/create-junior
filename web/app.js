@@ -1,4 +1,4 @@
-import {openDrawingViewer} from './drawing-viewer.js?v=r1-3';
+import {openDrawingViewer} from './drawing-viewer.js?v=r1-4';
 const API = '/api/workbench';
 const state = { page:'home', packageSnapshot:null, homeDraft:localStorage.getItem('junior-home-draft')||'', commandDraft:'', projectDetails:{}, project:null, projects:[], proposal:null, checks:[], coverage:{}, versions:[], preparation:null, dirtyForms:false, context:{revision:null,preferences:{},inventory:[]}, tab:'references', sidebarMode:'tasks', sidebarOpen:true, listMode:'joints', inspectedJointId:null, listPartId:null, designViewKey:null, activeTask:'reference', selectedId:null, busy:false, viewport:null, noticeTimer:null, conversationOpen:false, interactionRecords:[], localMessages:[], conversationProject:null, historyKey:'', polling:false, referenceDraft:'', fitDraft:'', referenceErrors:{}, resolvingReference:null, aiStatus:null, generating:false, generationError:'' };
 const $ = id => document.getElementById(id);
@@ -70,7 +70,7 @@ async function mutate(patch,advance=false,proposalRevision=null) {
   if(proposalRevision!==null && proposalRevision!==state.project.revision)throw new Error('提案基于旧版本，不能应用到当前设计；请取消并重新生成。');
   return guarded(async()=>{ state.project=await api(base(),json('PUT',{expected_revision:state.project.revision,patch})); state.proposal=null; state.dirtyForms=false; await refreshData(); if(advance) state.activeTask=nextTask(); render(); return state.project; });
 }
-const tasks=[['reference','参考与模型','参考与构造'],['fit','调整到适合你','身体 / 使用 / 家具尺寸'],['make','加工条件','工具与加工方式'],['confirm','准备开做','材料、五金与装配']];
+const tasks=[['reference','参考','参考与构造'],['fit','尺寸','空间 / 使用 / 家具尺寸'],['make','材料','材料与连接'],['confirm','资料','图纸与装配']];
 function taskDone(id) {
   const p=state.project;if(!p)return false;
   if(id==='reference')return p.scope==='supported' && p.parts?.length>0;
@@ -151,7 +151,7 @@ function renderTasks() {
   $('task-panel').classList.toggle('has-design',!!state.project.joints?.length);
   const current=tasks.find(([id])=>id===state.activeTask)||tasks[0];
   const card=node('section',{class:'active-task'});
-  if(current[0]!=='confirm')card.append(node('div',{class:'active-task-heading'},node('span',{class:'task-kicker'},current[0]==='reference'?'参考':current[0]==='fit'?'适己':'做法'),node('h2',{},current[1])));
+  card.append(node('div',{class:'active-task-heading'},node('span',{class:'task-kicker'},current[1]),node('h2',{},current[1])));
   const body=node('div',{class:'task-body'});({reference:renderReferenceTask,fit:renderFitTask,make:renderMakeTask,confirm:renderConfirmTask})[current[0]](body);card.append(body);list.append(card);
   const taskViewKey=state.project.id+':'+state.activeTask+':'+(state.proposal?.id||'');if(state.taskViewKey!==taskViewKey){$('task-panel').scrollTop=0;state.taskViewKey=taskViewKey;}
 }
@@ -291,7 +291,7 @@ function renderModelGuide() {
 }
 function renderShortcuts() {
   const host=$('command-suggestions');if(!host)return;host.replaceChildren();
-  $('command-input').placeholder=state.inspectedJointId?'这处连接，你想怎么改？':'例如：打开下料 / 座板宽度改为420mm';
+  $('command-input').placeholder=state.inspectedJointId?'这处连接，你想怎么改？':'告诉我怎么改，例如：座板宽度改为420mm';
 }
 function renderPlanPreview(body,pkg) {
   const p=displayProject(),parts=p.parts||[],hardware=pkg?.hardware||[];
@@ -729,7 +729,7 @@ function renderConversation() {
   const records=[...state.interactionRecords,...state.localMessages].sort((a,b)=>a.created_at.localeCompare(b.created_at));
   const labels={pending:'等待会话处理',ready:'修改候选',completed:'已完成',stale:'基于旧版本',superseded:'已合并到新请求',cancelled:'方案未采用',revision_requested:'等待调整方案',error:'发送未完成'};
   const latest=records.at(-1),lastStatus=latest?.status;
-  $('command-state').textContent=state.busy?'正在处理…':latest?(labels[lastStatus]||lastStatus):'本地指令即时响应 · 复杂设计由当前聊天协作';
+  $('command-state').textContent=state.busy?'正在处理…':latest?(labels[lastStatus]||lastStatus):'告诉我怎么改';
   const key=JSON.stringify([records,state.proposal?.id,state.busy]);if(state.historyKey===key)return;state.historyKey=key;host.replaceChildren();
   if(!records.length)host.append(paragraph('试试“打开下料”“切到前视图”，或“座板宽度改为420mm”。'));
   for(const record of records){
@@ -852,6 +852,11 @@ $('quick-reference-form').addEventListener('submit',event=>{event.preventDefault
 $('start-cafe-demo').addEventListener('click',()=>openCafeDemo().catch(report));
 $('ai-settings').addEventListener('click',()=>openAiSettings().catch(report));
 $('ai-close').addEventListener('click',()=>$('ai-dialog').close());
+const moreMenu=$('more-menu');
+$('more-home').addEventListener('click',()=>{moreMenu.open=false;persistDrafts();showPage('home');$('home-page').scrollTop=0;listProjects().catch(report);});
+$('more-demo').addEventListener('click',()=>{moreMenu.open=false;openCafeDemo().catch(report);});
+$('more-sidebar').addEventListener('click',()=>{moreMenu.open=false;setPanel(state.sidebarMode,!state.sidebarOpen);});
+document.querySelectorAll('#more-menu .more-item').forEach(item=>item.addEventListener('click',()=>{moreMenu.open=false;}));
 document.querySelectorAll('[data-flow]').forEach(el=>el.addEventListener('click',()=>{try{goTask(el.dataset.flow==='make'&&taskDone('make')?'confirm':el.dataset.flow);render();}catch(error){report(error);}}));
 $('flow-drawings').addEventListener('click',()=>openPackage().catch(report));
 $('reference-close').addEventListener('click',()=>$('reference-dialog').close());
@@ -878,6 +883,7 @@ function syncPage() {
 function showPage(page) {
   state.page=page;syncPage();
   if(page==='home')renderHome();
+  const menu=$('more-menu');if(menu)menu.open=false;
 }
 function renderHome() {
   if(document.activeElement!==$('home-input'))$('home-input').value=state.homeDraft;
@@ -900,7 +906,7 @@ async function beginFromHome({upload=false}={}) {
     state.homeDraft='';localStorage.removeItem('junior-home-draft');renderHome();
   }catch(error){$('home-error').textContent=error.message;report(error);}
 }
-$('home-link').addEventListener('click',event=>{event.preventDefault();persistDrafts();showPage('home');$('home-page').scrollTop=0;listProjects().catch(report);});
+$('home-link').addEventListener('click',event=>{event.preventDefault();showPage('design');});
 $('command-input').addEventListener('input',event=>{state.commandDraft=event.target.value;persistDrafts();});
 $('home-input').addEventListener('input',event=>{state.homeDraft=event.target.value;localStorage.setItem('junior-home-draft',state.homeDraft);$('home-start').disabled=state.busy||!state.homeDraft.trim();});
 $('home-form').addEventListener('submit',event=>{event.preventDefault();beginFromHome();});
@@ -914,7 +920,7 @@ setInterval(()=>pollInteractions().catch(()=>{}),4000);
 
 (async()=>{
   try {
-    const {WorkshopViewport}=await import('./viewport.js?v=r1-3');state.viewport=new WorkshopViewport($('viewport'),{onSelect:id=>selectPart(id),onSelectHardware:instance=>inspectJoint(instance.joint_id),onTransform:part=>{if(!state.project)return;stagePatch({parts:state.project.parts.map(item=>item.id===part.id?part:item),joints:state.project.joints.map(joint=>joint.part_ids.includes(part.id)?{...joint,confirmed:false}:joint)},'调整 '+part.name).catch(report);},onMeasure:result=>{$('measure-result').classList.toggle('hidden',!result);if(result)$('measure-result').textContent=result.pending?'选择第二个模型表面点':result.distance_mm.toFixed(1)+' mm · 两点空间距离';},onError:report});
+    const {WorkshopViewport}=await import('./viewport.js?v=r1-4');state.viewport=new WorkshopViewport($('viewport'),{onSelect:id=>selectPart(id),onSelectHardware:instance=>inspectJoint(instance.joint_id),onTransform:part=>{if(!state.project)return;stagePatch({parts:state.project.parts.map(item=>item.id===part.id?part:item),joints:state.project.joints.map(joint=>joint.part_ids.includes(part.id)?{...joint,confirmed:false}:joint)},'调整 '+part.name).catch(report);},onMeasure:result=>{$('measure-result').classList.toggle('hidden',!result);if(result)$('measure-result').textContent=result.pending?'选择第二个模型表面点':result.distance_mm.toFixed(1)+' mm · 两点空间距离';},onError:report});
   } catch(error) {$('viewport-error').textContent='三维视口加载失败：'+error.message;$('viewport-error').classList.remove('hidden');}
   try {state.aiStatus=await api('/ai/status');} catch(error) {report(error);}
   try {state.context=await api('/context');} catch(error) {report(error);}
@@ -926,9 +932,8 @@ setInterval(()=>pollInteractions().catch(()=>{}),4000);
     if(explicit&&!existing){
       showPage('home');$('home-error').textContent='链接中的项目在本机不存在。请从“我的项目”选择，或开始新的设计。';
     }else{
-      if(existing)await selectProject(existing.id);else showPage('home');
-      if(!explicit)showPage('home');
-      else if(route.searchParams.get('view')==='package'&&state.project?.parts?.length)await openPackage();
+      if(existing)await selectProject(existing.id);else await newProject();
+      if(route.searchParams.get('view')==='package'&&state.project?.parts?.length)await openPackage();
     }
   } catch(error) {report(error);$('save-state').textContent='连接失败，请确认本地服务已启动';}
 
