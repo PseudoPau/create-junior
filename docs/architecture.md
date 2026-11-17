@@ -9,7 +9,7 @@ Workbench API（版本、参考、候选、检查、导出）
   ↓
 Project Store（本地 JSON + 不可变版本 + 乐观锁）
   ↓
-Design Domain（部件、材料、加工、连接、五金、证据）
+Design Domain（使用模块、部件、材料、加工、连接、五金、证据）
   ↓
 Deterministic Engine（几何、连接、制造检查、图纸和清单）
 
@@ -20,6 +20,28 @@ AI Designer Orchestrator
 ```
 
 设计数据只有一个事实源：`Project`。三维模型、检查、图纸、清单和 ZIP 都从当前项目派生；AI 输出只是一份基于 `base_revision` 的 `DesignProposal`。
+
+### Module 层
+
+`Project.modules` 是人体工学与功能意图层，位于用户需求和物理几何之间。Module 表达使用者、姿态/动作、支撑或净空目标、约束、依据、状态以及受影响部件；`parts` 保持几何事实，`joints` 保持制造和装配事实。Module 不取代任何一层，也不能单独生成“可生产”结论。
+
+建议的最小对象边界：
+
+```text
+Module
+├─ kind：support / reach / clearance / storage / surface
+├─ purpose：用户要完成的动作或使用目标
+├─ anthropometry：使用者、姿态、身体条件
+├─ target：宽、深、高、净空、角度等目标
+├─ constraints：必须满足的范围或关系
+├─ status：inferred / target / confirmed / conflict / needs_review
+├─ source_ids：参考或用户依据
+└─ affected_part_ids：由它驱动或需要复核的部件
+```
+
+数据流为 `参考/意图 → ModuleDraft → 用户确认 → DesignProposal(modules + parts) → 确定性检查 → 图纸与制作包`。用户修改 Module 时，提案同时更新受影响部件、孔位和连接，并使旧资料失效；用户直接修改部件时，相关 Module 进入 `needs_review`，避免双向静默覆盖。
+
+首个 Module 只实现 CAFE CHAIR 的“坐姿支撑”，沿用现有 PUT 和 Proposal API，不急着新增 `/modules` 接口。第一阶段可先存储模块目标、关联部件和约束摘要，再逐步把公式与求解放入确定性规则层。AI 负责从参考和自然语言提取模块假设、追问和提出修改；规则层负责单位、约束、几何、版本和资料一致性。
 
 ## AI 提案协议
 
