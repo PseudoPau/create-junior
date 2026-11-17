@@ -250,6 +250,8 @@
   .quick-reference-card h2 {margin:8px 0;font-size:25px;}
   .quick-reference-card p {margin:0 0 15px;font-size:13px;line-height:1.65;color:#6d7669;}
   .quick-reference-form {display:grid;gap:10px;}
+  .quick-reference-form[hidden] {display:none;}
+  .sample-entry[hidden] {display:none;}
   .quick-reference-form label {font-weight:600;font-size:12px;}
   .quick-reference-form textarea {min-height:100px;resize:vertical;padding:12px;font-size:13px;background:#fafbf7;}
   .quick-reference-form>.primary {width:100%;min-height:42px;margin:0;}
@@ -266,6 +268,10 @@
   .sample-entry {display:grid;gap:4px;padding-top:16px;margin-top:18px;border-top:1px solid var(--line);font-size:12px;}
   .sample-entry button {justify-self:start;margin:0;padding:5px 0;border:0;color:var(--green);font-weight:600;}
   .quick-reference-card small {margin:0;color:var(--muted);font-size:10px;}
+  .generation-concept-card {display:grid;gap:7px;margin-top:15px;padding:15px;border:1px solid #d9e3d4;border-radius:12px;background:#f7faf5;}
+  .generation-concept-card h3 {margin:0;font-size:17px;}
+  .generation-concept-card p {margin:0!important;font-size:12px!important;line-height:1.6;}
+  .generation-concept-actions {display:flex;gap:8px;align-items:center;margin-top:5px;}
   .setup-code {background:#f4f6ef;border-radius:8px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;}
   #ai-dialog {max-width:620px;}
   #ai-settings-content h3 {margin-top:18px;}

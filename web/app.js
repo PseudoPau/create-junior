@@ -110,11 +110,14 @@ function render() {
   const hasReferences=(p.references?.length||0)>0;
   const hasModel=!!shown.parts?.length;
   document.body.classList.toggle('awaiting-model',!hasModel);
-  $('quick-reference-title').textContent=hasReferences?'参考已收到，开始拟定模型':'你想复刻哪件家具？';
-  $('quick-reference-hint').textContent=state.aiStatus?.ready?'生成后先预览候选，再选择是否采用。':'当前由聊天中的 AI 整理方案；提交请求后，回到聊天让我处理。';
+  $('quick-reference-title').textContent=hasReferences?'参考已收到':'你想复刻哪件家具？';
+  $('quick-reference-hint').textContent=hasReferences?'接下来先展开设计构思，确认家具类型、使用方式和需要保留的特点。':'把成品参考带进来，先得到一版可编辑模型，再调整尺寸、材料和连接。';
+  $('quick-reference-form').hidden=hasReferences&&!hasModel;
+  const sampleEntry=document.querySelector('.sample-entry');if(sampleEntry)sampleEntry.hidden=hasReferences;
   if(document.activeElement!==$('quick-reference-input'))$('quick-reference-input').value=state.referenceDraft;
   $('reference-receipts').replaceChildren(...(p.references||[]).map(ref=>node('div',{class:'reference-receipt-item'},node('span',{},({image:'图片',link:'链接',note:'说明',document:'PDF'})[ref.kind]||'图片'),node('strong',{},ref.name))));
   renderGenerationControls();
+  renderGenerationConcept(hasReferences&&!hasModel);
   const handoff=$('generation-handoff');handoff.replaceChildren();if(pendingRequest())handoff.append(handoffCard());
   $('canvas-title').textContent=preview?'待采用的模型候选':hasModel?p.name:'参考与模型';
   $('canvas-status').textContent=preview?'候选预览':p.confirmed_revision===p.revision?'已确认 v'+p.revision:hasModel?'设计中':pendingRequest()?'等待会话返回':hasReferences?'参考已保存':'等待参考';
@@ -131,6 +134,14 @@ function render() {
   renderTasks(); renderContext(); renderModelGuide(); renderShortcuts(); renderConversation();
   state.projectDetails[p.id]=p;state.projects=state.projects.map(item=>item.id===p.id?{...item,name:p.name,revision:p.revision,updated_at:p.updated_at}:item);persistDrafts();renderHome();syncPage();
   if(state.page==='package')renderPackagePage();
+}
+function renderGenerationConcept(show) {
+  const host=$('generation-concept');if(!host)return;host.replaceChildren();
+  if(!show)return;
+  const pending=pendingRequest();
+  const card=node('section',{class:'generation-concept-card'},node('span',{class:'eyebrow'},'下一步'),node('h3',{},pending?'设计构思已提交':'展开设计构思'),paragraph(pending?'需求已保存，等待当前聊天返回一版可编辑模型。':'参考已经收到。我会先整理家具类型、主要结构和使用方式，再给你一版可编辑模型。'));
+  if(!pending)card.append(node('div',{class:'generation-concept-actions'},button(state.generating?'正在生成…':'生成可编辑模型 →',generateModel,'primary',state.busy||state.generating),button('补充参考',()=>openReferenceComposer(''),'quiet',state.busy||state.generating)));
+  host.append(card);
 }
 function renderTasks() {
   if(!taskAvailable(state.activeTask))state.activeTask=taskDone('reference')?'fit':'reference';
