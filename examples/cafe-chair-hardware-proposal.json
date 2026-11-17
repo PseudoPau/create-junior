@@ -1,0 +1,632 @@
+{
+  "purpose": "manufacturing",
+  "summary": "已为当前连接补齐40件五金实体：12枚螺栓、16片垫圈、8枚横孔螺母和4枚锁紧螺母；实体锚定现有孔位。",
+  "patch": {
+    "joints": [
+      {
+        "name": "左底脚—侧立板",
+        "id": "foot_left_joint",
+        "kind": "screw",
+        "part_ids": [
+          "foot_left",
+          "side_left"
+        ],
+        "feature_ids": [
+          "foot_left_bolt_1",
+          "side_left_foot_1",
+          "foot_left_bolt_2",
+          "side_left_foot_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 60 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6,
+              "length_mm": 60,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3
+            },
+            "instances": [
+              {
+                "id": "foot_left_joint_bolt_1",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_1",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "foot_left_joint_bolt_2",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_2",
+                "offset_mm": -1.6
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 4,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18,
+              "bore_diameter_mm": 6.4,
+              "length_mm": 1.6
+            },
+            "instances": [
+              {
+                "id": "foot_left_joint_outer_washer_1",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_1",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "foot_left_joint_inner_washer_1",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_1",
+                "offset_mm": 48.0
+              },
+              {
+                "id": "foot_left_joint_outer_washer_2",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_2",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "foot_left_joint_inner_washer_2",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_2",
+                "offset_mm": 48.0
+              }
+            ]
+          },
+          {
+            "name": "尼龙锁紧螺母",
+            "spec": "M6 × 1，厚6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "hex_nut",
+              "diameter_mm": 11.547005383792516,
+              "length_mm": 6,
+              "bore_diameter_mm": 6,
+              "across_flats_mm": 10
+            },
+            "instances": [
+              {
+                "id": "foot_left_joint_locknut_1",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_1",
+                "offset_mm": 49.6
+              },
+              {
+                "id": "foot_left_joint_locknut_2",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_2",
+                "offset_mm": 49.6
+              }
+            ]
+          }
+        ],
+        "assembly_note": "左底脚与侧立板下边齐平。底脚两孔距底边40mm，沿300mm长边从最小端量140、220mm。Ø6.5贯穿两块24mm板；每孔穿1枚M6×60螺栓，头部与锁紧螺母下各放1片18mm垫圈。先轻拧，整椅装齐后交替收紧。",
+        "confirmed": false
+      },
+      {
+        "name": "右底脚—侧立板",
+        "id": "foot_right_joint",
+        "kind": "screw",
+        "part_ids": [
+          "foot_right",
+          "side_right"
+        ],
+        "feature_ids": [
+          "foot_right_bolt_1",
+          "side_right_foot_1",
+          "foot_right_bolt_2",
+          "side_right_foot_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 60 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6,
+              "length_mm": 60,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3
+            },
+            "instances": [
+              {
+                "id": "foot_right_joint_bolt_1",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_1",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "foot_right_joint_bolt_2",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_2",
+                "offset_mm": -1.6
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 4,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18,
+              "bore_diameter_mm": 6.4,
+              "length_mm": 1.6
+            },
+            "instances": [
+              {
+                "id": "foot_right_joint_outer_washer_1",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_1",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "foot_right_joint_inner_washer_1",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_1",
+                "offset_mm": 48.0
+              },
+              {
+                "id": "foot_right_joint_outer_washer_2",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_2",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "foot_right_joint_inner_washer_2",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_2",
+                "offset_mm": 48.0
+              }
+            ]
+          },
+          {
+            "name": "尼龙锁紧螺母",
+            "spec": "M6 × 1，厚6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "hex_nut",
+              "diameter_mm": 11.547005383792516,
+              "length_mm": 6,
+              "bore_diameter_mm": 6,
+              "across_flats_mm": 10
+            },
+            "instances": [
+              {
+                "id": "foot_right_joint_locknut_1",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_1",
+                "offset_mm": 49.6
+              },
+              {
+                "id": "foot_right_joint_locknut_2",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_2",
+                "offset_mm": 49.6
+              }
+            ]
+          }
+        ],
+        "assembly_note": "右底脚与侧立板下边齐平。底脚两孔距底边40mm，沿300mm长边从最小端量140、220mm。Ø6.5贯穿两块24mm板；每孔穿1枚M6×60螺栓，头部与锁紧螺母下各放1片18mm垫圈。先轻拧，整椅装齐后交替收紧。",
+        "confirmed": false
+      },
+      {
+        "name": "靠背—左侧立板",
+        "id": "back_left",
+        "kind": "screw",
+        "part_ids": [
+          "back",
+          "side_left"
+        ],
+        "feature_ids": [
+          "side_left_back_1",
+          "back_left_bolt_1",
+          "back_left_nut_1",
+          "side_left_back_2",
+          "back_left_bolt_2",
+          "back_left_nut_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 70 mm，ISO7380-1，头径10.5 / 头高3.3 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6,
+              "length_mm": 70,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3
+            },
+            "instances": [
+              {
+                "id": "back_left_bolt_1",
+                "part_id": "side_left",
+                "feature_id": "side_left_back_1",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "back_left_bolt_2",
+                "part_id": "side_left",
+                "feature_id": "side_left_back_2",
+                "offset_mm": -1.6
+              }
+            ]
+          },
+          {
+            "name": "横孔圆柱螺母",
+            "spec": "M6 × 1，直径10 / 长14 mm，螺纹孔居中",
+            "quantity": 2,
+            "geometry": {
+              "kind": "barrel_nut",
+              "diameter_mm": 10,
+              "length_mm": 14,
+              "bore_diameter_mm": 6
+            },
+            "instances": [
+              {
+                "id": "back_left_barrel_1",
+                "part_id": "back",
+                "feature_id": "back_left_nut_1",
+                "offset_mm": 5,
+                "bore_part_id": "back",
+                "bore_feature_id": "back_left_bolt_1"
+              },
+              {
+                "id": "back_left_barrel_2",
+                "part_id": "back",
+                "feature_id": "back_left_nut_2",
+                "offset_mm": 5,
+                "bore_part_id": "back",
+                "bore_feature_id": "back_left_bolt_2"
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18,
+              "bore_diameter_mm": 6.4,
+              "length_mm": 1.6
+            },
+            "instances": [
+              {
+                "id": "back_left_washer_1",
+                "part_id": "side_left",
+                "feature_id": "side_left_back_1",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "back_left_washer_2",
+                "part_id": "side_left",
+                "feature_id": "side_left_back_2",
+                "offset_mm": -1.6
+              }
+            ]
+          }
+        ],
+        "assembly_note": "靠背左侧两条螺栓轴线离地140、240mm。侧立板钻Ø6.5通孔，靠背侧边钻Ø6.5深55mm；靠背背面按图钻Ø10深19mm安装孔。放入14mm长圆柱螺母，外端沉入板面5mm，转槽对准主孔。每孔配M6×70螺栓和18mm垫圈，先手旋入螺纹，再交替收紧。",
+        "confirmed": false
+      },
+      {
+        "name": "靠背—右侧立板",
+        "id": "back_right",
+        "kind": "screw",
+        "part_ids": [
+          "back",
+          "side_right"
+        ],
+        "feature_ids": [
+          "side_right_back_1",
+          "back_right_bolt_1",
+          "back_right_nut_1",
+          "side_right_back_2",
+          "back_right_bolt_2",
+          "back_right_nut_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 70 mm，ISO7380-1，头径10.5 / 头高3.3 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6,
+              "length_mm": 70,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3
+            },
+            "instances": [
+              {
+                "id": "back_right_bolt_1",
+                "part_id": "side_right",
+                "feature_id": "side_right_back_1",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "back_right_bolt_2",
+                "part_id": "side_right",
+                "feature_id": "side_right_back_2",
+                "offset_mm": -1.6
+              }
+            ]
+          },
+          {
+            "name": "横孔圆柱螺母",
+            "spec": "M6 × 1，直径10 / 长14 mm，螺纹孔居中",
+            "quantity": 2,
+            "geometry": {
+              "kind": "barrel_nut",
+              "diameter_mm": 10,
+              "length_mm": 14,
+              "bore_diameter_mm": 6
+            },
+            "instances": [
+              {
+                "id": "back_right_barrel_1",
+                "part_id": "back",
+                "feature_id": "back_right_nut_1",
+                "offset_mm": 5,
+                "bore_part_id": "back",
+                "bore_feature_id": "back_right_bolt_1"
+              },
+              {
+                "id": "back_right_barrel_2",
+                "part_id": "back",
+                "feature_id": "back_right_nut_2",
+                "offset_mm": 5,
+                "bore_part_id": "back",
+                "bore_feature_id": "back_right_bolt_2"
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18,
+              "bore_diameter_mm": 6.4,
+              "length_mm": 1.6
+            },
+            "instances": [
+              {
+                "id": "back_right_washer_1",
+                "part_id": "side_right",
+                "feature_id": "side_right_back_1",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "back_right_washer_2",
+                "part_id": "side_right",
+                "feature_id": "side_right_back_2",
+                "offset_mm": -1.6
+              }
+            ]
+          }
+        ],
+        "assembly_note": "靠背右侧两条螺栓轴线离地140、240mm。侧立板钻Ø6.5通孔，靠背侧边钻Ø6.5深55mm；靠背背面按图钻Ø10深19mm安装孔。放入14mm长圆柱螺母，外端沉入板面5mm，转槽对准主孔。每孔配M6×70螺栓和18mm垫圈，先手旋入螺纹，再交替收紧。",
+        "confirmed": false
+      },
+      {
+        "name": "座板—左侧立板",
+        "id": "seat_left",
+        "kind": "screw",
+        "part_ids": [
+          "seat",
+          "side_left"
+        ],
+        "feature_ids": [
+          "seat_left_bolt_1",
+          "seat_left_recess_1",
+          "side_left_seat_1",
+          "side_left_seat_nut_1",
+          "seat_left_bolt_2",
+          "seat_left_recess_2",
+          "side_left_seat_2",
+          "side_left_seat_nut_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 70 mm，ISO7380-1，头径10.5 / 头高3.3 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6,
+              "length_mm": 70,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3
+            },
+            "instances": [
+              {
+                "id": "seat_left_bolt_1",
+                "part_id": "seat",
+                "feature_id": "seat_left_bolt_1",
+                "offset_mm": 3.6
+              },
+              {
+                "id": "seat_left_bolt_2",
+                "part_id": "seat",
+                "feature_id": "seat_left_bolt_2",
+                "offset_mm": 3.6
+              }
+            ]
+          },
+          {
+            "name": "横孔圆柱螺母",
+            "spec": "M6 × 1，直径10 / 长14 mm，螺纹孔居中",
+            "quantity": 2,
+            "geometry": {
+              "kind": "barrel_nut",
+              "diameter_mm": 10,
+              "length_mm": 14,
+              "bore_diameter_mm": 6
+            },
+            "instances": [
+              {
+                "id": "seat_left_barrel_1",
+                "part_id": "side_left",
+                "feature_id": "side_left_seat_nut_1",
+                "offset_mm": 5,
+                "bore_part_id": "side_left",
+                "bore_feature_id": "side_left_seat_1"
+              },
+              {
+                "id": "seat_left_barrel_2",
+                "part_id": "side_left",
+                "feature_id": "side_left_seat_nut_2",
+                "offset_mm": 5,
+                "bore_part_id": "side_left",
+                "bore_feature_id": "side_left_seat_2"
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18,
+              "bore_diameter_mm": 6.4,
+              "length_mm": 1.6
+            },
+            "instances": [
+              {
+                "id": "seat_left_washer_1",
+                "part_id": "seat",
+                "feature_id": "seat_left_bolt_1",
+                "offset_mm": 3.6
+              },
+              {
+                "id": "seat_left_washer_2",
+                "part_id": "seat",
+                "feature_id": "seat_left_bolt_2",
+                "offset_mm": 3.6
+              }
+            ]
+          }
+        ],
+        "assembly_note": "座板左侧孔从局部最小X/Z边定位：U=103mm，V=50、130mm。先钻Ø20深5.2mm沉孔，再钻Ø6.5通孔。侧立板从顶端钻Ø6.5深55mm，外侧顶下40mm钻Ø10深19mm；圆柱螺母外端沉入5mm并对准上孔。装入18mm垫圈与M6×70螺栓，头部收在沉孔内。座面边角打磨后，在平面上校正底脚并交替紧固。",
+        "confirmed": false
+      },
+      {
+        "name": "座板—右侧立板",
+        "id": "seat_right",
+        "kind": "screw",
+        "part_ids": [
+          "seat",
+          "side_right"
+        ],
+        "feature_ids": [
+          "seat_right_bolt_1",
+          "seat_right_recess_1",
+          "side_right_seat_1",
+          "side_right_seat_nut_1",
+          "seat_right_bolt_2",
+          "seat_right_recess_2",
+          "side_right_seat_2",
+          "side_right_seat_nut_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 70 mm，ISO7380-1，头径10.5 / 头高3.3 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6,
+              "length_mm": 70,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3
+            },
+            "instances": [
+              {
+                "id": "seat_right_bolt_1",
+                "part_id": "seat",
+                "feature_id": "seat_right_bolt_1",
+                "offset_mm": 3.6
+              },
+              {
+                "id": "seat_right_bolt_2",
+                "part_id": "seat",
+                "feature_id": "seat_right_bolt_2",
+                "offset_mm": 3.6
+              }
+            ]
+          },
+          {
+            "name": "横孔圆柱螺母",
+            "spec": "M6 × 1，直径10 / 长14 mm，螺纹孔居中",
+            "quantity": 2,
+            "geometry": {
+              "kind": "barrel_nut",
+              "diameter_mm": 10,
+              "length_mm": 14,
+              "bore_diameter_mm": 6
+            },
+            "instances": [
+              {
+                "id": "seat_right_barrel_1",
+                "part_id": "side_right",
+                "feature_id": "side_right_seat_nut_1",
+                "offset_mm": 5,
+                "bore_part_id": "side_right",
+                "bore_feature_id": "side_right_seat_1"
+              },
+              {
+                "id": "seat_right_barrel_2",
+                "part_id": "side_right",
+                "feature_id": "side_right_seat_nut_2",
+                "offset_mm": 5,
+                "bore_part_id": "side_right",
+                "bore_feature_id": "side_right_seat_2"
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18,
+              "bore_diameter_mm": 6.4,
+              "length_mm": 1.6
+            },
+            "instances": [
+              {
+                "id": "seat_right_washer_1",
+                "part_id": "seat",
+                "feature_id": "seat_right_bolt_1",
+                "offset_mm": 3.6
+              },
+              {
+                "id": "seat_right_washer_2",
+                "part_id": "seat",
+                "feature_id": "seat_right_bolt_2",
+                "offset_mm": 3.6
+              }
+            ]
+          }
+        ],
+        "assembly_note": "座板右侧孔从局部最小X/Z边定位：U=297mm，V=50、130mm。先钻Ø20深5.2mm沉孔，再钻Ø6.5通孔。侧立板从顶端钻Ø6.5深55mm，外侧顶下40mm钻Ø10深19mm；圆柱螺母外端沉入5mm并对准上孔。装入18mm垫圈与M6×70螺栓，头部收在沉孔内。座面边角打磨后，在平面上校正底脚并交替紧固。",
+        "confirmed": false
+      }
+    ]
+  }
+}

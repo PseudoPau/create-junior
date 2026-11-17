@@ -1,12 +1,11 @@
 [project]
 name = "create-junior"
 version = "0.1.0"
-description = "A lightweight local woodworking assistant for Create Junior"
+description = "A local-first furniture recreation and DIY customization workbench"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115,<1",
     "httpx>=0.28,<1",
-    "mcp>=1.27,<2",
     "pydantic>=2.10,<3",
     "uvicorn[standard]>=0.34,<1",
 ]

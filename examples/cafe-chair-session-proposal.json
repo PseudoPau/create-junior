@@ -1,0 +1,1246 @@
+{
+  "summary": "恢复参考可见的两颗后入式靠背紧固件，座板后缘斜切贴合；隐藏连接采用M6横孔螺母。",
+  "purpose": "manufacturing",
+  "patch": {
+    "parts": [
+      {
+        "id": "seat",
+        "name": "座板",
+        "kind": "seat_board",
+        "material_id": "ash_x",
+        "size_mm": [
+          400.0,
+          24.0,
+          215.0
+        ],
+        "position_mm": [
+          0.0,
+          438.0,
+          42.5
+        ],
+        "rotation_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "outline_mm": null,
+        "features": [
+          {
+            "id": "seat_left_bolt_1",
+            "role": "connection",
+            "kind": "hole",
+            "face": "top",
+            "u_mm": 103.0,
+            "v_mm": 50.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          },
+          {
+            "id": "seat_left_recess_1",
+            "role": "hardware_access",
+            "kind": "hole",
+            "face": "top",
+            "u_mm": 103.0,
+            "v_mm": 50.0,
+            "diameter_mm": 20.0,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 5.2
+          },
+          {
+            "id": "seat_left_bolt_2",
+            "role": "connection",
+            "kind": "hole",
+            "face": "top",
+            "u_mm": 103.0,
+            "v_mm": 130.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          },
+          {
+            "id": "seat_left_recess_2",
+            "role": "hardware_access",
+            "kind": "hole",
+            "face": "top",
+            "u_mm": 103.0,
+            "v_mm": 130.0,
+            "diameter_mm": 20.0,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 5.2
+          },
+          {
+            "id": "seat_right_bolt_1",
+            "role": "connection",
+            "kind": "hole",
+            "face": "top",
+            "u_mm": 297.0,
+            "v_mm": 50.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          },
+          {
+            "id": "seat_right_recess_1",
+            "role": "hardware_access",
+            "kind": "hole",
+            "face": "top",
+            "u_mm": 297.0,
+            "v_mm": 50.0,
+            "diameter_mm": 20.0,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 5.2
+          },
+          {
+            "id": "seat_right_bolt_2",
+            "role": "connection",
+            "kind": "hole",
+            "face": "top",
+            "u_mm": 297.0,
+            "v_mm": 130.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          },
+          {
+            "id": "seat_right_recess_2",
+            "role": "hardware_access",
+            "kind": "hole",
+            "face": "top",
+            "u_mm": 297.0,
+            "v_mm": 130.0,
+            "diameter_mm": 20.0,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 5.2
+          },
+          {
+            "id": "seat_back_bolt_1",
+            "role": "connection",
+            "kind": "hole",
+            "face": "back",
+            "u_mm": 155.0,
+            "v_mm": 6.0,
+            "diameter_mm": 6.5,
+            "depth_mm": 50,
+            "entry_mm": [
+              -45.0,
+              -6.0,
+              -104.32611434724762
+            ],
+            "direction_local": [
+              0.0,
+              0.17364817766693033,
+              0.984807753012208
+            ]
+          },
+          {
+            "id": "seat_back_nut_1",
+            "role": "hardware_access",
+            "kind": "hole",
+            "face": "bottom",
+            "u_mm": 155.0,
+            "v_mm": 39.77177895300423,
+            "diameter_mm": 10,
+            "depth_mm": 19.264003996110716,
+            "entry_mm": [
+              -45.0,
+              -12.0,
+              -67.72822104699577
+            ],
+            "direction_local": [
+              0.0,
+              0.984807753012208,
+              -0.17364817766693033
+            ]
+          },
+          {
+            "id": "seat_back_bolt_2",
+            "role": "connection",
+            "kind": "hole",
+            "face": "back",
+            "u_mm": 245.0,
+            "v_mm": 6.0,
+            "diameter_mm": 6.5,
+            "depth_mm": 50,
+            "entry_mm": [
+              45.0,
+              -6.0,
+              -104.32611434724762
+            ],
+            "direction_local": [
+              0.0,
+              0.17364817766693033,
+              0.984807753012208
+            ]
+          },
+          {
+            "id": "seat_back_nut_2",
+            "role": "hardware_access",
+            "kind": "hole",
+            "face": "bottom",
+            "u_mm": 245.0,
+            "v_mm": 39.77177895300423,
+            "diameter_mm": 10,
+            "depth_mm": 19.264003996110716,
+            "entry_mm": [
+              45.0,
+              -12.0,
+              -67.72822104699577
+            ],
+            "direction_local": [
+              0.0,
+              0.984807753012208,
+              -0.17364817766693033
+            ]
+          }
+        ],
+        "plane_cuts": [
+          {
+            "normal_local": [
+              0,
+              -0.17364817766693033,
+              -0.984807753012208
+            ],
+            "offset_mm": 103.7830553168092
+          }
+        ]
+      },
+      {
+        "id": "side_left",
+        "name": "左侧立板",
+        "kind": "board",
+        "material_id": "ash_z",
+        "size_mm": [
+          24.0,
+          170.0,
+          426.0
+        ],
+        "position_mm": [
+          -97.0,
+          213.0,
+          20.0
+        ],
+        "rotation_deg": [
+          90.0,
+          0.0,
+          0.0
+        ],
+        "outline_mm": null,
+        "features": [
+          {
+            "id": "side_left_foot_1",
+            "role": "connection",
+            "kind": "hole",
+            "face": "left",
+            "u_mm": 386.0,
+            "v_mm": 55.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          },
+          {
+            "id": "side_left_foot_2",
+            "role": "connection",
+            "kind": "hole",
+            "face": "left",
+            "u_mm": 386.0,
+            "v_mm": 135.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          },
+          {
+            "id": "side_left_seat_1",
+            "role": "connection",
+            "kind": "hole",
+            "face": "back",
+            "u_mm": 12.0,
+            "v_mm": 50.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 55.0
+          },
+          {
+            "id": "side_left_seat_nut_1",
+            "role": "hardware_access",
+            "kind": "hole",
+            "face": "left",
+            "u_mm": 40.0,
+            "v_mm": 50.0,
+            "diameter_mm": 10.0,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 19.0
+          },
+          {
+            "id": "side_left_seat_2",
+            "role": "connection",
+            "kind": "hole",
+            "face": "back",
+            "u_mm": 12.0,
+            "v_mm": 130.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 55.0
+          },
+          {
+            "id": "side_left_seat_nut_2",
+            "role": "hardware_access",
+            "kind": "hole",
+            "face": "left",
+            "u_mm": 40.0,
+            "v_mm": 130.0,
+            "diameter_mm": 10.0,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 19.0
+          }
+        ]
+      },
+      {
+        "id": "side_right",
+        "name": "右侧立板",
+        "kind": "board",
+        "material_id": "ash_z",
+        "size_mm": [
+          24.0,
+          170.0,
+          426.0
+        ],
+        "position_mm": [
+          97.0,
+          213.0,
+          20.0
+        ],
+        "rotation_deg": [
+          90.0,
+          0.0,
+          0.0
+        ],
+        "outline_mm": null,
+        "features": [
+          {
+            "id": "side_right_foot_1",
+            "role": "connection",
+            "kind": "hole",
+            "face": "right",
+            "u_mm": 386.0,
+            "v_mm": 55.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          },
+          {
+            "id": "side_right_foot_2",
+            "role": "connection",
+            "kind": "hole",
+            "face": "right",
+            "u_mm": 386.0,
+            "v_mm": 135.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          },
+          {
+            "id": "side_right_seat_1",
+            "role": "connection",
+            "kind": "hole",
+            "face": "back",
+            "u_mm": 12.0,
+            "v_mm": 50.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 55.0
+          },
+          {
+            "id": "side_right_seat_nut_1",
+            "role": "hardware_access",
+            "kind": "hole",
+            "face": "right",
+            "u_mm": 40.0,
+            "v_mm": 50.0,
+            "diameter_mm": 10.0,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 19.0
+          },
+          {
+            "id": "side_right_seat_2",
+            "role": "connection",
+            "kind": "hole",
+            "face": "back",
+            "u_mm": 12.0,
+            "v_mm": 130.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 55.0
+          },
+          {
+            "id": "side_right_seat_nut_2",
+            "role": "hardware_access",
+            "kind": "hole",
+            "face": "right",
+            "u_mm": 40.0,
+            "v_mm": 130.0,
+            "diameter_mm": 10.0,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 19.0
+          }
+        ]
+      },
+      {
+        "id": "back",
+        "name": "倾斜长靠背",
+        "kind": "board",
+        "material_id": "ash_z",
+        "size_mm": [
+          170.0,
+          24.0,
+          788.0
+        ],
+        "position_mm": [
+          0.0,
+          390.096,
+          -66.62242789026905
+        ],
+        "rotation_deg": [
+          -100.0,
+          0.0,
+          0.0
+        ],
+        "outline_mm": null,
+        "features": [
+          {
+            "id": "back_seat_bolt_1",
+            "role": "connection",
+            "kind": "hole",
+            "face": "top",
+            "u_mm": 40.0,
+            "v_mm": 434.4345129759586,
+            "diameter_mm": 6.5,
+            "depth_mm": 24,
+            "entry_mm": [
+              -45.0,
+              12.00000000000001,
+              40.43451297595865
+            ],
+            "direction_local": [
+              0.0,
+              -0.9999999999999999,
+              0.0
+            ]
+          },
+          {
+            "id": "back_seat_bolt_2",
+            "role": "connection",
+            "kind": "hole",
+            "face": "top",
+            "u_mm": 130.0,
+            "v_mm": 434.4345129759586,
+            "diameter_mm": 6.5,
+            "depth_mm": 24,
+            "entry_mm": [
+              45.0,
+              12.00000000000001,
+              40.43451297595865
+            ],
+            "direction_local": [
+              0.0,
+              -0.9999999999999999,
+              0.0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foot_left",
+        "name": "左底脚",
+        "kind": "board",
+        "material_id": "ash_z",
+        "size_mm": [
+          24.0,
+          80.0,
+          300.0
+        ],
+        "position_mm": [
+          -121.0,
+          40.0,
+          0.0
+        ],
+        "rotation_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "outline_mm": null,
+        "features": [
+          {
+            "id": "foot_left_bolt_1",
+            "role": "connection",
+            "kind": "hole",
+            "face": "left",
+            "u_mm": 140.0,
+            "v_mm": 40.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          },
+          {
+            "id": "foot_left_bolt_2",
+            "role": "connection",
+            "kind": "hole",
+            "face": "left",
+            "u_mm": 220.0,
+            "v_mm": 40.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          }
+        ]
+      },
+      {
+        "id": "foot_right",
+        "name": "右底脚",
+        "kind": "board",
+        "material_id": "ash_z",
+        "size_mm": [
+          24.0,
+          80.0,
+          300.0
+        ],
+        "position_mm": [
+          121.0,
+          40.0,
+          0.0
+        ],
+        "rotation_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "outline_mm": null,
+        "features": [
+          {
+            "id": "foot_right_bolt_1",
+            "role": "connection",
+            "kind": "hole",
+            "face": "right",
+            "u_mm": 140.0,
+            "v_mm": 40.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          },
+          {
+            "id": "foot_right_bolt_2",
+            "role": "connection",
+            "kind": "hole",
+            "face": "right",
+            "u_mm": 220.0,
+            "v_mm": 40.0,
+            "diameter_mm": 6.5,
+            "width_mm": null,
+            "length_mm": null,
+            "depth_mm": 24.0
+          }
+        ]
+      }
+    ],
+    "joints": [
+      {
+        "name": "左底脚—侧立板",
+        "id": "foot_left_joint",
+        "kind": "screw",
+        "part_ids": [
+          "foot_left",
+          "side_left"
+        ],
+        "feature_ids": [
+          "foot_left_bolt_1",
+          "side_left_foot_1",
+          "foot_left_bolt_2",
+          "side_left_foot_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 60 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6.0,
+              "length_mm": 60.0,
+              "bore_diameter_mm": null,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "foot_left_joint_bolt_1",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_1",
+                "offset_mm": -1.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "foot_left_joint_bolt_2",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_2",
+                "offset_mm": -1.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 4,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18.0,
+              "length_mm": 1.6,
+              "bore_diameter_mm": 6.4,
+              "head_diameter_mm": null,
+              "head_height_mm": null,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "foot_left_joint_outer_washer_1",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_1",
+                "offset_mm": -1.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "foot_left_joint_inner_washer_1",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_1",
+                "offset_mm": 48.0,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "foot_left_joint_outer_washer_2",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_2",
+                "offset_mm": -1.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "foot_left_joint_inner_washer_2",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_2",
+                "offset_mm": 48.0,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              }
+            ]
+          },
+          {
+            "name": "尼龙锁紧螺母",
+            "spec": "M6 × 1，厚6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "hex_nut",
+              "diameter_mm": 11.547005383792516,
+              "length_mm": 6.0,
+              "bore_diameter_mm": 6.0,
+              "head_diameter_mm": null,
+              "head_height_mm": null,
+              "across_flats_mm": 10.0
+            },
+            "instances": [
+              {
+                "id": "foot_left_joint_locknut_1",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_1",
+                "offset_mm": 49.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "foot_left_joint_locknut_2",
+                "part_id": "foot_left",
+                "feature_id": "foot_left_bolt_2",
+                "offset_mm": 49.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              }
+            ]
+          }
+        ],
+        "assembly_note": "左底脚与侧立板下边齐平。底脚两孔距底边40mm，沿300mm长边从最小端量140、220mm。Ø6.5贯穿两块24mm板；每孔穿1枚M6×60螺栓，头部与锁紧螺母下各放1片18mm垫圈。先轻拧，整椅装齐后交替收紧。",
+        "confirmed": true
+      },
+      {
+        "name": "右底脚—侧立板",
+        "id": "foot_right_joint",
+        "kind": "screw",
+        "part_ids": [
+          "foot_right",
+          "side_right"
+        ],
+        "feature_ids": [
+          "foot_right_bolt_1",
+          "side_right_foot_1",
+          "foot_right_bolt_2",
+          "side_right_foot_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 60 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6.0,
+              "length_mm": 60.0,
+              "bore_diameter_mm": null,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "foot_right_joint_bolt_1",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_1",
+                "offset_mm": -1.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "foot_right_joint_bolt_2",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_2",
+                "offset_mm": -1.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 4,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18.0,
+              "length_mm": 1.6,
+              "bore_diameter_mm": 6.4,
+              "head_diameter_mm": null,
+              "head_height_mm": null,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "foot_right_joint_outer_washer_1",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_1",
+                "offset_mm": -1.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "foot_right_joint_inner_washer_1",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_1",
+                "offset_mm": 48.0,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "foot_right_joint_outer_washer_2",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_2",
+                "offset_mm": -1.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "foot_right_joint_inner_washer_2",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_2",
+                "offset_mm": 48.0,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              }
+            ]
+          },
+          {
+            "name": "尼龙锁紧螺母",
+            "spec": "M6 × 1，厚6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "hex_nut",
+              "diameter_mm": 11.547005383792516,
+              "length_mm": 6.0,
+              "bore_diameter_mm": 6.0,
+              "head_diameter_mm": null,
+              "head_height_mm": null,
+              "across_flats_mm": 10.0
+            },
+            "instances": [
+              {
+                "id": "foot_right_joint_locknut_1",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_1",
+                "offset_mm": 49.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "foot_right_joint_locknut_2",
+                "part_id": "foot_right",
+                "feature_id": "foot_right_bolt_2",
+                "offset_mm": 49.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              }
+            ]
+          }
+        ],
+        "assembly_note": "右底脚与侧立板下边齐平。底脚两孔距底边40mm，沿300mm长边从最小端量140、220mm。Ø6.5贯穿两块24mm板；每孔穿1枚M6×60螺栓，头部与锁紧螺母下各放1片18mm垫圈。先轻拧，整椅装齐后交替收紧。",
+        "confirmed": true
+      },
+      {
+        "name": "座板—左侧立板",
+        "id": "seat_left",
+        "kind": "screw",
+        "part_ids": [
+          "seat",
+          "side_left"
+        ],
+        "feature_ids": [
+          "seat_left_bolt_1",
+          "seat_left_recess_1",
+          "side_left_seat_1",
+          "side_left_seat_nut_1",
+          "seat_left_bolt_2",
+          "seat_left_recess_2",
+          "side_left_seat_2",
+          "side_left_seat_nut_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 70 mm，ISO7380-1，头径10.5 / 头高3.3 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6.0,
+              "length_mm": 70.0,
+              "bore_diameter_mm": null,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "seat_left_bolt_1",
+                "part_id": "seat",
+                "feature_id": "seat_left_bolt_1",
+                "offset_mm": 3.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "seat_left_bolt_2",
+                "part_id": "seat",
+                "feature_id": "seat_left_bolt_2",
+                "offset_mm": 3.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              }
+            ]
+          },
+          {
+            "name": "横孔圆柱螺母",
+            "spec": "M6 × 1，直径10 / 长14 mm，螺纹孔居中",
+            "quantity": 2,
+            "geometry": {
+              "kind": "barrel_nut",
+              "diameter_mm": 10.0,
+              "length_mm": 14.0,
+              "bore_diameter_mm": 6.0,
+              "head_diameter_mm": null,
+              "head_height_mm": null,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "seat_left_barrel_1",
+                "part_id": "side_left",
+                "feature_id": "side_left_seat_nut_1",
+                "offset_mm": 5.0,
+                "bore_part_id": "side_left",
+                "bore_feature_id": "side_left_seat_1"
+              },
+              {
+                "id": "seat_left_barrel_2",
+                "part_id": "side_left",
+                "feature_id": "side_left_seat_nut_2",
+                "offset_mm": 5.0,
+                "bore_part_id": "side_left",
+                "bore_feature_id": "side_left_seat_2"
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18.0,
+              "length_mm": 1.6,
+              "bore_diameter_mm": 6.4,
+              "head_diameter_mm": null,
+              "head_height_mm": null,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "seat_left_washer_1",
+                "part_id": "seat",
+                "feature_id": "seat_left_bolt_1",
+                "offset_mm": 3.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "seat_left_washer_2",
+                "part_id": "seat",
+                "feature_id": "seat_left_bolt_2",
+                "offset_mm": 3.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              }
+            ]
+          }
+        ],
+        "assembly_note": "座板左侧孔从局部最小X/Z边定位：U=103mm，V=50、130mm。先钻Ø20深5.2mm沉孔，再钻Ø6.5通孔。侧立板从顶端钻Ø6.5深55mm，外侧顶下40mm钻Ø10深19mm；圆柱螺母外端沉入5mm并对准上孔。装入18mm垫圈与M6×70螺栓，头部收在沉孔内。座面边角打磨后，在平面上校正底脚并交替紧固。",
+        "confirmed": true
+      },
+      {
+        "name": "座板—右侧立板",
+        "id": "seat_right",
+        "kind": "screw",
+        "part_ids": [
+          "seat",
+          "side_right"
+        ],
+        "feature_ids": [
+          "seat_right_bolt_1",
+          "seat_right_recess_1",
+          "side_right_seat_1",
+          "side_right_seat_nut_1",
+          "seat_right_bolt_2",
+          "seat_right_recess_2",
+          "side_right_seat_2",
+          "side_right_seat_nut_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 70 mm，ISO7380-1，头径10.5 / 头高3.3 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6.0,
+              "length_mm": 70.0,
+              "bore_diameter_mm": null,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "seat_right_bolt_1",
+                "part_id": "seat",
+                "feature_id": "seat_right_bolt_1",
+                "offset_mm": 3.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "seat_right_bolt_2",
+                "part_id": "seat",
+                "feature_id": "seat_right_bolt_2",
+                "offset_mm": 3.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              }
+            ]
+          },
+          {
+            "name": "横孔圆柱螺母",
+            "spec": "M6 × 1，直径10 / 长14 mm，螺纹孔居中",
+            "quantity": 2,
+            "geometry": {
+              "kind": "barrel_nut",
+              "diameter_mm": 10.0,
+              "length_mm": 14.0,
+              "bore_diameter_mm": 6.0,
+              "head_diameter_mm": null,
+              "head_height_mm": null,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "seat_right_barrel_1",
+                "part_id": "side_right",
+                "feature_id": "side_right_seat_nut_1",
+                "offset_mm": 5.0,
+                "bore_part_id": "side_right",
+                "bore_feature_id": "side_right_seat_1"
+              },
+              {
+                "id": "seat_right_barrel_2",
+                "part_id": "side_right",
+                "feature_id": "side_right_seat_nut_2",
+                "offset_mm": 5.0,
+                "bore_part_id": "side_right",
+                "bore_feature_id": "side_right_seat_2"
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18.0,
+              "length_mm": 1.6,
+              "bore_diameter_mm": 6.4,
+              "head_diameter_mm": null,
+              "head_height_mm": null,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "seat_right_washer_1",
+                "part_id": "seat",
+                "feature_id": "seat_right_bolt_1",
+                "offset_mm": 3.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              },
+              {
+                "id": "seat_right_washer_2",
+                "part_id": "seat",
+                "feature_id": "seat_right_bolt_2",
+                "offset_mm": 3.6,
+                "bore_part_id": null,
+                "bore_feature_id": null
+              }
+            ]
+          }
+        ],
+        "assembly_note": "座板右侧孔从局部最小X/Z边定位：U=297mm，V=50、130mm。先钻Ø20深5.2mm沉孔，再钻Ø6.5通孔。侧立板从顶端钻Ø6.5深55mm，外侧顶下40mm钻Ø10深19mm；圆柱螺母外端沉入5mm并对准上孔。装入18mm垫圈与M6×70螺栓，头部收在沉孔内。座面边角打磨后，在平面上校正底脚并交替紧固。",
+        "confirmed": true
+      },
+      {
+        "name": "靠背—座板后缘",
+        "id": "back_seat",
+        "kind": "screw",
+        "part_ids": [
+          "back",
+          "seat"
+        ],
+        "feature_ids": [
+          "back_seat_bolt_1",
+          "seat_back_bolt_1",
+          "seat_back_nut_1",
+          "back_seat_bolt_2",
+          "seat_back_bolt_2",
+          "seat_back_nut_2"
+        ],
+        "hardware": [
+          {
+            "name": "圆头内六角螺栓",
+            "spec": "M6 × 70 mm，ISO7380-1，头径10.5 / 头高3.3 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "bolt",
+              "diameter_mm": 6.0,
+              "length_mm": 70.0,
+              "bore_diameter_mm": null,
+              "head_diameter_mm": 10.5,
+              "head_height_mm": 3.3,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "back_seat_bolt_1",
+                "part_id": "back",
+                "feature_id": "back_seat_bolt_1",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "back_seat_bolt_2",
+                "part_id": "back",
+                "feature_id": "back_seat_bolt_2",
+                "offset_mm": -1.6
+              }
+            ]
+          },
+          {
+            "name": "横孔圆柱螺母",
+            "spec": "M6 × 1，直径10 / 长14 mm，螺纹孔居中",
+            "quantity": 2,
+            "geometry": {
+              "kind": "barrel_nut",
+              "diameter_mm": 10.0,
+              "length_mm": 14.0,
+              "bore_diameter_mm": 6.0,
+              "head_diameter_mm": null,
+              "head_height_mm": null,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "back_seat_barrel_1",
+                "part_id": "seat",
+                "feature_id": "seat_back_nut_1",
+                "offset_mm": 5.264003996110716,
+                "bore_part_id": "seat",
+                "bore_feature_id": "seat_back_bolt_1"
+              },
+              {
+                "id": "back_seat_barrel_2",
+                "part_id": "seat",
+                "feature_id": "seat_back_nut_2",
+                "offset_mm": 5.264003996110716,
+                "bore_part_id": "seat",
+                "bore_feature_id": "seat_back_bolt_2"
+              }
+            ]
+          },
+          {
+            "name": "平垫圈",
+            "spec": "M6，内径6.4 / 外径18 / 厚1.6 mm",
+            "quantity": 2,
+            "geometry": {
+              "kind": "washer",
+              "diameter_mm": 18.0,
+              "length_mm": 1.6,
+              "bore_diameter_mm": 6.4,
+              "head_diameter_mm": null,
+              "head_height_mm": null,
+              "across_flats_mm": null
+            },
+            "instances": [
+              {
+                "id": "back_seat_washer_1",
+                "part_id": "back",
+                "feature_id": "back_seat_bolt_1",
+                "offset_mm": -1.6
+              },
+              {
+                "id": "back_seat_washer_2",
+                "part_id": "back",
+                "feature_id": "back_seat_bolt_2",
+                "offset_mm": -1.6
+              }
+            ]
+          }
+        ],
+        "assembly_note": "座板后缘按10°斜切线加工，与靠背前面贴合。靠背后面两孔距左右边各40mm，Ø6.5垂直背板钻穿；座板对应主孔沿向前上10°钻Ø6.5深50mm。座板底面两处Ø10安装孔沿向上后10°钻深19.264mm，14mm圆柱螺母端面沉入5.264mm，螺纹轴对准主孔。每处使用M6×70螺栓与18mm垫圈，先手旋入，再交替紧固。斜孔使用10°导向夹具；基准、孔口与孔底位置见零件图。",
+        "confirmed": true
+      }
+    ],
+    "evidence": [
+      {
+        "statement": "既有官方产品资料：宽350、深300、高780、座深215、座高450 mm。来源 https://ishinomaki-lab.org/en/products/cafe-chair-the-originals。",
+        "source_ids": [],
+        "status": "observed"
+      },
+      {
+        "statement": "三张图可辨座板、两块侧立板、倾斜长靠背及左右底脚；座面、底脚与靠背背面可见黑色螺钉头。",
+        "source_ids": [
+          "33891d6c-f4d0-47a8-af9b-24296ebf56e2",
+          "14fc2aa3-1647-4bb2-9fc2-4c1541020086",
+          "3d627b0f-ee19-4ae9-a894-4f5694b61c98"
+        ],
+        "status": "observed"
+      },
+      {
+        "statement": "按已输入的400mm基准将座宽从350改为400mm；座高450、座深215及六板构造保持。",
+        "source_ids": [],
+        "status": "adopted"
+      },
+      {
+        "statement": "六板统一白蜡木净厚24mm；座板木纹沿宽度，其余构件木纹沿长边。",
+        "source_ids": [],
+        "status": "adopted"
+      },
+      {
+        "statement": "横孔螺母规格：Hafele 264.82.014，居中M6螺纹、直径10、长14mm。https://files.hafele.co.uk/catalogfiles/www/14CFC412.pdf",
+        "source_ids": [],
+        "status": "observed"
+      },
+      {
+        "statement": "圆头螺栓规格：ISO7380-1 M6头径10.5、头高3.3、内六角4mm。https://www.aspenfasteners.com/content/pdf/Metric_ISO_7380_spec.pdf",
+        "source_ids": [],
+        "status": "observed"
+      },
+      {
+        "statement": "锁紧螺母规格：DIN985 M6 A2-70，厚6mm、扳手10mm。https://www.accu.co.uk/hexagon-nylon-locking-nuts/7948-HNN-M6-A2",
+        "source_ids": [],
+        "status": "observed"
+      },
+      {
+        "statement": "平垫圈规格：DIN9021 M6内径6.4、外径18、厚1.6mm。https://docs.rs-online.com/3cc2/A700000009608874.pdf",
+        "source_ids": [],
+        "status": "observed"
+      },
+      {
+        "statement": "背面参考可见靠背近座板后缘一排两颗紧固头。",
+        "source_ids": [
+          "3d627b0f-ee19-4ae9-a894-4f5694b61c98"
+        ],
+        "status": "observed"
+      },
+      {
+        "statement": "采用两枚M6×70螺栓与横孔圆柱螺母作为新设计；座板后缘10°斜切、斜孔与底部螺母安装孔由本设计确定。",
+        "source_ids": [],
+        "status": "adopted"
+      }
+    ],
+    "scope_reason": "六块24mm白蜡木板；座板后缘10°平面斜切，显式孔轴与M6可拆装连接。",
+    "assumptions": [
+      "24mm为刨光后的净厚；座板后缘按C1剖面斜切10°，再按各加工面的坐标与孔轴钻孔。",
+      "钻孔工具：Ø6.5钻头、Ø10木工钻、Ø20平底钻、直角与10°钻孔导向夹具、深度挡圈。",
+      "横孔螺母为Ø10×14、M6居中螺纹；各安装孔深度与端面沉入量按对应零件图，靠背连接使用10°导向夹具。",
+      "装配次序：底脚与侧立板 → 座板与侧立板 → 靠背与座板；先装横孔螺母，再手旋入螺栓，平台校正后交替紧固。"
+    ]
+  }
+}

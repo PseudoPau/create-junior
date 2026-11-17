@@ -4,3 +4,11 @@ __pycache__/
 .venv/
 .data/
 .env
+
+# Local credentials, coverage and editor artifacts
+.env.*
+!.env.example
+.coverage
+htmlcov/
+.DS_Store
+Thumbs.db

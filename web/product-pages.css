@@ -1,0 +1,100 @@
+/* R1 product surfaces share the existing project and design state. */
+@media screen {
+  body[data-page=home] .workspace,body[data-page=home] .workspace-flow,body[data-page=package] .workspace,body[data-page=package] .workspace-flow {display:none;}
+  body:not([data-page=home]) .home-page,body:not([data-page=package]) .package-page {display:none;}
+  body[data-page=home] .project-heading,body[data-page=home] .panel-switches,body[data-page=home] #project-switch,body[data-page=home] #new-project,body[data-page=home] #undo,body[data-page=home] #package-button {display:none;}
+  body[data-page=package] .panel-switches,body[data-page=package] #project-switch,body[data-page=package] #new-project,body[data-page=package] #undo,body[data-page=package] #package-button {display:none;}
+  .product-page {height:calc(100dvh - var(--workspace-top));overflow:auto;padding:44px max(24px,calc((100vw - 1120px)/2));scrollbar-width:thin;}
+  .home-intro {padding:12px 0 28px;max-width:670px;}
+  .home-intro h1 {font-size:38px;line-height:1.25;letter-spacing:-1px;margin:12px 0;}
+  .home-intro p {font-size:15px;color:var(--muted);max-width:520px;}
+  .home-start-grid {display:grid;grid-template-columns:minmax(0,1.6fr) minmax(250px,1fr);gap:22px;align-items:stretch;}
+  .home-compose {background:white;border:1px solid var(--line);border-radius:16px;padding:26px;}
+  .home-compose h2,.home-example h2 {font-size:20px;margin:0 0 18px;}
+  .home-compose label {display:block;font-size:12px;font-weight:600;margin-bottom:8px;}
+  .home-compose textarea {min-height:145px;background:#fafbf8;resize:vertical;font-size:14px;}
+  .home-compose-actions {display:flex;justify-content:space-between;gap:12px;margin:15px 0;}
+  .home-compose .hint {font-size:11px;line-height:1.6;}
+  .home-example {position:relative;background:#eaf0e5;border-radius:16px;padding:26px;overflow:hidden;}
+  .home-example .eyebrow {display:block;margin-bottom:9px;}
+  .home-example p {font-size:12px;line-height:1.8;max-width:180px;position:relative;}
+  .home-example button {margin-top:12px;position:relative;background:white;}
+  .home-example small {display:block;font-size:10px;color:var(--muted);margin-top:15px;position:relative;}
+  .sample-drawing {position:absolute;right:22px;top:40px;width:110px;height:150px;opacity:.5;transform:rotate(-7deg);}
+  .sample-drawing span {position:absolute;display:block;background:#b7a77d;border:1px solid #8b7d5d;}
+  .sample-back {width:42px;height:78px;left:46px;top:0;transform:skewY(12deg);}
+  .sample-seat {width:85px;height:12px;top:75px;left:8px;transform:skewY(12deg);}
+  .sample-leg {width:48px;height:57px;left:27px;top:88px;transform:skewY(12deg);}
+  .sample-foot {width:80px;height:9px;left:12px;top:142px;transform:skewY(12deg);}
+  .home-projects {margin-top:38px;padding-bottom:30px;}
+  .section-title {display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .section-title h2 {font-size:20px;margin:0;}
+  .section-title button {font-size:11px;}
+  .project-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px;}
+  .project-card {display:flex;align-items:center;gap:16px;padding:18px;text-align:left;border-radius:12px;min-width:0;}
+  .project-marker {display:grid;place-items:center;background:var(--soft);width:48px;height:58px;border-radius:8px;flex-shrink:0;color:var(--green);font-size:19px;}
+  .project-card>div {display:grid;gap:4px;min-width:0;}
+  .project-card strong {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;}
+  .project-card small {font-size:10px;color:var(--muted);}
+  .project-status {font-size:11px;color:var(--green);}
+  .project-continue {margin-left:auto;white-space:nowrap;font-size:11px;color:var(--muted);}
+  .task-panel>.panel-heading {display:none;}
+  .workspace-flow {gap:5px;}
+  .workspace-flow #flow-drawings {margin-left:auto;}
+  .package-page {scroll-behavior:smooth;}
+  .package-page-heading {display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:12px;}
+  .package-page-heading h1 {font-size:28px;margin:6px 0;}
+  .package-page-heading button {white-space:nowrap;}
+  .package-summary {display:flex;justify-content:space-between;align-items:center;gap:22px;background:white;padding:24px;border:1px solid var(--line);border-radius:14px;}
+  .package-summary h2 {font-size:21px;margin:0;}
+  .package-summary p {color:var(--muted);margin:8px 0;}
+  .package-summary .package-actions {flex-wrap:wrap;justify-content:flex-end;}
+  .package-section-nav {display:flex;gap:10px;margin:25px 0 0;padding-bottom:18px;border-bottom:1px solid var(--line);}
+  .package-section-nav button {background:transparent;border:0;padding:8px 12px;font-size:13px;color:var(--green);}
+  .package-section {padding:32px 0;border-bottom:1px solid var(--line);scroll-margin:20px;}
+  .package-section h2 {font-size:23px;margin:9px 0;}
+  .package-section>p {color:var(--muted);max-width:760px;line-height:1.8;}
+  .package-section h3 {margin-top:20px;}
+  .table-scroll {overflow:auto;border:1px solid var(--line);border-radius:10px;background:white;margin:10px 0 24px;}
+  .table-scroll table {width:100%;border-collapse:collapse;font-size:12px;}
+  .table-scroll th,.table-scroll td {text-align:left;padding:12px;white-space:nowrap;border-bottom:1px solid var(--line);}
+  .table-scroll th {background:var(--soft);font-weight:600;}
+  .package-sheet-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:24px 0;}
+  .package-sheet {padding:10px;text-align:left;border-radius:10px;min-width:0;}
+  .package-sheet img {width:100%;height:auto;aspect-ratio:1.414;object-fit:contain;background:white;display:block;}
+  .package-sheet strong {display:block;font-size:11px;padding:9px 3px 2px;overflow-wrap:anywhere;}
+  .assembly-step {display:flex;gap:20px;border-top:1px solid var(--line);padding:22px 0;}
+  .assembly-number {color:var(--green);font-size:23px;min-width:42px;}
+  .assembly-step h3 {margin:0 0 8px;font-size:16px;}
+  .assembly-step p,.assembly-step li {font-size:13px;line-height:1.8;}
+  .assembly-step p {white-space:pre-wrap;}
+  .package-section .optional-controls {font-size:12px;}
+  .package-section .optional-controls summary {font-size:13px;}
+  .home-page .entry-error:empty {display:none;}
+  .entry-error {color:#994e33;}
+}
+@media screen and (max-width:760px) {
+  .product-page {padding:24px 16px;}
+  .home-intro {padding:8px 0 18px;}
+  .home-intro h1 {font-size:30px;}
+  .home-intro p {font-size:13px;}
+  .home-start-grid,.project-grid {grid-template-columns:1fr;}
+  .home-compose,.home-example {padding:20px;}
+  .home-example {min-height:225px;}
+  .home-compose-actions {gap:8px;flex-wrap:wrap;}
+  .home-compose-actions button {font-size:12px;}
+  .home-compose-actions .primary {flex:1;}
+  .project-continue {font-size:10px;}
+  .project-card {padding:14px;gap:12px;}
+  .package-summary {display:block;padding:18px;}
+  .package-summary .package-actions {justify-content:flex-start;}
+  .package-section-nav {overflow:auto;gap:4px;}
+  .package-section-nav button {white-space:nowrap;font-size:11px;padding:8px;}
+  .package-sheet-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .package-page-heading h1 {font-size:24px;}
+  .package-section h2 {font-size:20px;}
+  .assembly-step {gap:12px;}
+  .assembly-number {min-width:28px;font-size:20px;}
+  .top-actions #ai-settings {max-width:none;}
+}
+@media print {.product-page{display:none!important;}}
