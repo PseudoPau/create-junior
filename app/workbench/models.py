@@ -68,6 +68,42 @@ class Requirements(Record):
     tools: list[str] = Field(default_factory=list)
     notes: str = Field(default="", max_length=4000)
 
+class ModuleConstraint(Record):
+    key: str = Field(min_length=1, max_length=80, pattern=r"^[a-zA-Z0-9_.-]+$")
+    operator: Literal["gte", "lte", "eq", "range"] = "range"
+    value_mm: float | None = None
+    min_mm: float | None = None
+    max_mm: float | None = None
+    priority: Literal["required", "recommended"] = "required"
+    label: str = Field(default="", max_length=160)
+
+    @model_validator(mode="after")
+    def valid_bounds(self):
+        values = (self.value_mm, self.min_mm, self.max_mm)
+        if any(value is not None and (not math.isfinite(value) or value <= 0) for value in values):
+            raise ValueError("模块约束数值必须为正的有限数值")
+        if self.operator in {"gte", "lte", "eq"} and self.value_mm is None:
+            raise ValueError("模块约束需要 value_mm")
+        if self.operator == "range":
+            if self.min_mm is None or self.max_mm is None or self.min_mm > self.max_mm:
+                raise ValueError("范围约束需要有效的 min_mm 和 max_mm")
+        return self
+
+class Module(Record):
+    id: str = Field(min_length=1, max_length=80, pattern=r"^[a-zA-Z0-9_-]+$")
+    kind: Literal["support", "reach", "clearance", "storage", "surface", "base"]
+    name: str = Field(min_length=1, max_length=120)
+    purpose: str = Field(default="", max_length=1000)
+    occupant: str = Field(default="", max_length=160)
+    posture: str = Field(default="", max_length=160)
+    anthropometry: dict[str, float | str | None] = Field(default_factory=dict)
+    target: dict[str, float | str | None] = Field(default_factory=dict)
+    constraints: list[ModuleConstraint] = Field(default_factory=list, max_length=50)
+    source_ids: list[str] = Field(default_factory=list, max_length=50)
+    status: Literal["inferred", "target", "confirmed", "conflict", "needs_review"] = "inferred"
+    affected_part_ids: list[str] = Field(default_factory=list, max_length=100)
+    notes: str = Field(default="", max_length=4000)
+
 class Material(Record):
     name: str
     kind: Literal["solid_wood", "panel"]
@@ -195,6 +231,7 @@ class Project(Record):
     fabrication_mode: Literal["self", "shop"] | None = None
     scale: Scale | None = None
     requirements: Requirements = Field(default_factory=Requirements)
+    modules: list[Module] = Field(default_factory=list, max_length=50)
     materials: dict[str, Material] = Field(default_factory=dict)
     parts: list[Part] = Field(default_factory=list, max_length=100)
     joints: list[Joint] = Field(default_factory=list, max_length=200)
@@ -237,5 +274,5 @@ class Restore(Record):
 
 EDITABLE_FIELDS = {
     "name", "scope", "scope_reason", "evidence", "assumptions",
-    "fabrication_mode", "scale", "requirements", "materials", "parts", "joints"
+    "fabrication_mode", "scale", "requirements", "modules", "materials", "parts", "joints"
 }

@@ -295,6 +295,51 @@ def build_checks(project: Any) -> list[dict]:
                 if feature_error:
                     add("feature_invalid", f"{fid}：{feature_error}", [part_id])
 
+    # Modules are the user-intent layer. They are checked when present, while
+    # older projects without modules remain valid and keep the existing checks.
+    modules = project.get("modules") or []
+    module_ids: set[str] = set()
+    reference_ids = {ref.get("id") for ref in references}
+    for module in modules:
+        module_id = module.get("id", "")
+        affected = module.get("affected_part_ids") or []
+        if not module_id or module_id in module_ids:
+            add("module_id_invalid", "使用模块编号必须非空且唯一。", affected)
+        module_ids.add(module_id)
+        missing_sources = set(module.get("source_ids") or []) - reference_ids
+        if missing_sources:
+            add("module_source_missing", f"{module_id}：使用模块引用了不存在的参考依据。", affected)
+        missing_parts = [part_id for part_id in affected if part_id not in part_map]
+        if missing_parts:
+            add("module_parts_missing", f"{module_id}：关联部件不存在：" + "、".join(missing_parts), missing_parts)
+        target = module.get("target") or {}
+        status = module.get("status", "inferred")
+        for constraint in module.get("constraints") or []:
+            key = constraint.get("key", "")
+            actual = target.get(key)
+            priority = constraint.get("priority", "required")
+            severity = "blocker" if priority == "required" and status in {"target", "confirmed", "conflict"} else "warning"
+            if not _number(actual, True):
+                add("module_constraint_missing", f"{module_id}：缺少“{constraint.get('label') or key}”的目标值。", affected, severity)
+                continue
+            operator = constraint.get("operator")
+            value = constraint.get("value_mm")
+            minimum = constraint.get("min_mm")
+            maximum = constraint.get("max_mm")
+            valid = (
+                operator == "gte" and _number(value, True) and actual >= value
+                or operator == "lte" and _number(value, True) and actual <= value
+                or operator == "eq" and _number(value, True) and abs(actual - value) <= 0.01
+                or operator == "range" and _number(minimum, True) and _number(maximum, True) and minimum <= actual <= maximum
+            )
+            if not valid:
+                label = constraint.get("label") or key
+                if operator == "range":
+                    expectation = f"{minimum}–{maximum}"
+                else:
+                    expectation = f"{operator} {value}"
+                add("module_constraint_violation", f"{module_id}：{label}为 {actual}，不满足 {expectation}。", affected, severity)
+
     adjacency: dict[str, set[str]] = defaultdict(set)
     used_features: set[str] = set()
     joint_ids: set[str] = set()
@@ -433,6 +478,7 @@ def build_package(project: Any) -> dict:
         "fabrication_mode": project.get("fabrication_mode"), "checks": checks,
         "parts": deepcopy(parts), "joints": deepcopy(project.get("joints", [])),
         "materials": deepcopy(materials),
+        "modules": deepcopy(project.get("modules", [])),
         "cut_list": [{
             "part_id": p.get("id"), "name": p.get("name"), "quantity": 1,
             "stock_size_mm": deepcopy(p.get("size_mm")),

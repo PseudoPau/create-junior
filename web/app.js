@@ -187,19 +187,47 @@ function renderReferenceTask(body) {
 function renderFitTask(body) {
   const p=state.project;
   if(!p.parts?.length){body.append(paragraph('先完成参考模型，尺寸会从模型带入。'),button('回到参考',()=>goTask('reference'),'primary'));return;}
+  const shown=displayProject();
+  const activeModule=(shown.modules||[]).find(module=>module.status!=='conflict'&&module.status!=='needs_review')||(shown.modules||[])[0];
+  if(activeModule)body.append(moduleFitCard(activeModule,shown));
   body.append(node('div',{class:'fit-summary'},node('span',{class:'eyebrow'},'当前模型 · mm'),node('strong',{},'先看这版尺寸'),modelDimensionFacts()));
   if(state.proposal){body.append(paragraph('画布正在预览调整，采用后再核对尺寸。'));return;}
   const pending=pendingRequest();
   if(pending)body.append(handoffCard());
   const form=node('form',{class:'fit-request','data-flow-draft':'fit'});
   form.append(node('label',{for:'fit-request-text'},'想怎么调整？'));
-  const input=node('textarea',{id:'fit-request-text',placeholder:'例如：给身高120cm的孩子用，放在书桌前。也可以直接说座板宽度改为420mm。',maxlength:2000},state.fitDraft);
+  const input=node('textarea',{id:'fit-request-text',placeholder:activeModule?'例如：坐高降低 20 mm，或告诉我谁来使用、要完成什么动作。':'例如：给身高120cm的孩子用，放在书桌前。也可以直接说座板宽度改为420mm。',maxlength:2000},state.fitDraft);
   input.addEventListener('input',()=>{state.fitDraft=input.value;persistDrafts();});
   const error=node('p',{class:'entry-error',role:'alert'}),submit=node('button',{type:'submit',class:'primary',disabled:state.busy},pending?'补充调整要求':'按这个要求调整');
   form.append(input,submit,error);
   form.addEventListener('submit',async event=>{event.preventDefault();const text=input.value.trim();if(!text){error.textContent='说说使用者、用途，或想改的尺寸。';return;}submit.disabled=true;try{await requestFit(text);}catch(exc){error.textContent=exc.message;}finally{submit.disabled=false;}});
   body.append(form);
   if(!pending)body.append(button(p.scale?.confirmed?'尺寸已定，继续 →':'就用当前尺寸 →',acceptCurrentDimensions,'quiet',state.busy));
+}
+function moduleFitCard(module,project) {
+  const target=module.target||module.targets||{};
+  const anthropometry=module.anthropometry||{};
+  const values=[
+    ['座宽',target.width_mm??target.seat_width_mm],
+    ['座深',target.depth_mm??target.seat_depth_mm],
+    ['座高',target.height_mm??target.seat_height_mm],
+    ['靠背角',target.angle_deg??target.back_angle_deg]
+  ].filter(([,value])=>value!==null&&value!==undefined&&value!=='');
+  const kindLabels={support:'支撑',reach:'触达',clearance:'净空',storage:'收纳',surface:'操作面'};
+  const statusLabels={inferred:'待确认',target:'目标',confirmed:'已确认',conflict:'有冲突',needs_review:'需重新核对',observed:'已观察'};
+  const title=module.name||module.label||kindLabels[module.kind]||'当前使用方式';
+  const purpose=module.purpose||'';
+  const people=module.occupant||anthropometry.occupant||({adult:'成人',child:'儿童',older_adult:'长者'})[anthropometry.user_group]||anthropometry.posture;
+  const parts=(module.affected_part_ids||module.part_ids||[]).map(id=>project.parts?.find(part=>part.id===id)?.name||id).filter(Boolean);
+  const status=statusLabels[module.status]||'适配目标';
+  const card=node('section',{class:'module-fit-card'},node('div',{class:'module-fit-heading'},node('div',{},node('span',{class:'eyebrow'},'当前适配目标'),node('h3',{},title)),node('span',{class:'module-status'},status)));
+  if(purpose)card.append(node('p',{class:'module-fit-purpose'},purpose));
+  if(people||module.posture)card.append(node('p',{class:'module-fit-meta'},'使用方式 · '+[people,module.posture&&module.posture!==people?module.posture:null].filter(Boolean).join(' · ')));
+  if(values.length)card.append(node('div',{class:'module-target-grid'},values.map(([label,value])=>node('div',{},node('small',{},label),node('strong',{},typeof value==='number'?Math.round(value):value),node('span',{},label==='靠背角'?'°':'mm')))));
+  else card.append(node('p',{class:'module-fit-empty'},'先告诉我谁使用、怎么使用，Junior 会把它整理成可调整的尺寸目标。'));
+  if(parts.length)card.append(node('p',{class:'module-fit-parts'},'影响部件 · '+parts.join('、')));
+  if(module.status==='conflict'||module.status==='needs_review')card.classList.add('is-warning');
+  return card;
 }
 function modelDimensionFacts() {
   const parts=displayProject().parts||[],seat=parts.filter(p=>p.kind==='seat_board'),facts=[];
@@ -656,6 +684,17 @@ function renderPackagePage() {
   const blockers=(pkg.checks||[]).filter(check=>check.severity==='blocker');
   if(stale)host.append(node('p',{class:'preview-banner'},'设计已修改，重新更新资料后再下载。历史快照不会覆盖当前设计。'));
   else if(pkg.status!=='ready')host.append(node('div',{class:'preview-banner'},paragraph(blockers.length?'还有 '+blockers.length+' 项需要处理；可以先浏览草稿。':'请核对当前设计与检查范围，确认后下载。'),button(blockers.length?'查看待解决项':'核对并确认设计',()=>showList('review'))));
+  const moduleRows=pkg.modules||project.modules||[];
+  if(moduleRows.length){
+    const moduleSection=node('section',{class:'package-module-summary'},node('span',{class:'eyebrow'},'适配目标'),node('h2',{},'这件家具为谁、怎么使用'),paragraph('制作资料沿用当前设计版本的使用模块；它表达适配目标，不替代承载和安全复核。'));
+    moduleRows.forEach(module=>{
+      const target=module.target||{},labels={seat_width_mm:'座宽',seat_depth_mm:'座深',seat_height_mm:'座高',back_angle_deg:'靠背角'};
+      const values=Object.entries(target).filter(([,value])=>value!==null&&value!==undefined&&value!=='').map(([key,value])=>labels[key]?labels[key]+' '+value+(key.endsWith('_deg')?'°':' mm'):key+' '+value).join(' · ');
+      const parts=(module.affected_part_ids||[]).map(id=>(project.parts||[]).find(part=>part.id===id)?.name||id).filter(Boolean).join('、');
+      moduleSection.append(node('article',{class:'package-module-card'},node('div',{},node('strong',{},module.name||'使用模块'),node('p',{},[module.occupant,module.posture].filter(Boolean).join(' · ')||'使用条件待补充')),node('span',{class:'tag'},({inferred:'待确认',target:'目标',confirmed:'已确认',conflict:'有冲突',needs_review:'需重新核对'})[module.status]||'适配目标'),values?node('p',{},values):null,parts?node('small',{},'关联部件 · '+parts):null));
+    });
+    host.append(moduleSection);
+  }
   const nav=node('nav',{class:'package-section-nav','aria-label':'制作资料目录'});for(const [id,label] of [['purchase','我买什么'],['workshop','交给加工店什么'],['assembly','我怎么装']])nav.append(button(label,()=>$('package-'+id).scrollIntoView({behavior:'smooth',block:'start'})));host.append(nav);
   const purchase=node('section',{id:'package-purchase',class:'package-section'},node('span',{class:'eyebrow'},'01 · 采购与下料'),node('h2',{},'我买什么'),paragraph('板件尺寸单位为 mm。毛坯余量、锯缝和实际供料规格需与加工者核对。'));
   purchase.append(node('h3',{},'板件清单'),node('div',{class:'table-scroll'},renderRecords(pkg.cut_list||[])),node('h3',{},'五金采购'),node('div',{class:'table-scroll'},renderRecords(pkg.hardware||[])));host.append(purchase);

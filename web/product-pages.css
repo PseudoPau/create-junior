@@ -60,6 +60,15 @@
   .package-summary h2 {font-size:21px;margin:0;}
   .package-summary p {color:var(--muted);margin:8px 0;}
   .package-summary .package-actions {flex-wrap:wrap;justify-content:flex-end;}
+  .package-module-summary {margin:22px 0 0;padding:20px;background:#f7faf5;border:1px solid #d9e3d4;border-radius:14px;}
+  .package-module-summary h2 {font-size:18px;margin:7px 0;}
+  .package-module-summary>p {margin:0;color:var(--muted);font-size:11px;line-height:1.6;}
+  .package-module-card {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 14px;margin-top:12px;padding:12px;background:white;border-radius:10px;}
+  .package-module-card strong {font-size:13px;}
+  .package-module-card p {grid-column:1; margin:4px 0 0;color:var(--muted);font-size:11px;line-height:1.5;}
+  .package-module-card>p:not(:first-of-type) {grid-column:1/-1;color:var(--text);}
+  .package-module-card small {grid-column:1/-1;color:var(--muted);font-size:10px;}
+  .package-module-card .tag {grid-column:2;grid-row:1;align-self:start;}
   .package-section-nav {display:flex;gap:10px;margin:25px 0 0;padding-bottom:18px;border-bottom:1px solid var(--line);}
   .package-section-nav button {background:transparent;border:0;padding:8px 12px;font-size:13px;color:var(--green);}
   .package-section {padding:32px 0;border-bottom:1px solid var(--line);scroll-margin:20px;}

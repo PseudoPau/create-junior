@@ -56,7 +56,27 @@ def dimension_command(project: Project, text: str, selected_part_id: str | None)
     summary = f'{part.name} · 局部 {"XYZ"[axis]}：{old:g} → {value:g} mm。部件中心与现有孔轴位置保留。'
     scale = {'kind': 'target', 'confirmed': False, 'length_mm': value,
              'note': f'本次采用 {part.name} 局部 {"XYZ"[axis]} 尺寸 {value:g} mm；其余部件尺寸沿用模型。'}
-    return {'summary': summary, 'patch': {'parts': parts, 'scale': scale}, 'part_id': part.id}
+    # A dimension command against a part also updates the active ergonomic
+    # module when that part is one of its driven parts. This keeps the user
+    # intent and the physical geometry in the same proposal revision.
+    modules = [module.model_dump(mode='json') for module in project.modules]
+    module_changed = False
+    for module in modules:
+        if part.id not in module.get('affected_part_ids', []):
+            continue
+        target = module.setdefault('target', {})
+        key = None
+        if part.kind == 'seat_board' and axis == 0:
+            key = 'seat_width_mm'
+        elif part.kind == 'seat_board' and axis == 2:
+            key = 'seat_depth_mm'
+        if key:
+            target[key] = value
+            module_changed = True
+    patch = {'parts': parts, 'scale': scale}
+    if module_changed:
+        patch['modules'] = modules
+    return {'summary': summary, 'patch': patch, 'part_id': part.id}
 
 
 def read_records(store, project_id):
