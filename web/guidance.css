@@ -61,6 +61,23 @@
   .reference-receipt-item strong {overflow-wrap:anywhere;font-weight:500;}
   .reference-extract {margin:8px 0;font-size:11px;}
   .reference-extract p {white-space:pre-wrap;max-height:200px;overflow:auto;}
+  .reference-evidence {display:grid;gap:9px;padding:11px;background:#f7faf5;border:1px solid #e0e8dc;border-radius:12px;}
+  .reference-evidence-heading,.fit-card-heading {display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .reference-evidence-heading strong {font-size:12px;}
+  .reference-evidence-grid {display:grid;gap:7px;}
+  .reference-visual-card {display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px;align-items:center;padding:8px;background:white;border:1px solid #e4e9e1;border-radius:9px;min-width:0;}
+  .reference-visual-card img {width:34px;height:34px;object-fit:cover;border-radius:6px;}
+  .reference-visual-icon {display:grid;place-items:center;width:34px;height:34px;border-radius:8px;background:#eef3e9;color:var(--green);font-size:17px;}
+  .reference-visual-card .eyebrow {display:block;font-size:9px;margin-bottom:2px;}
+  .reference-visual-card strong {display:block;font-size:11px;overflow-wrap:anywhere;}
+  .reference-visual-card p {margin:3px 0 0;font-size:10px;line-height:1.45;color:var(--muted);}
+  .reference-visual-card a {display:inline-block;margin-top:3px;color:var(--green);font-size:10px;}
+  .proposal-status-card {display:grid;gap:6px;margin-bottom:12px;padding:12px;border:1px solid #e5c8aa;border-radius:12px;background:#fff8ed;}
+  .proposal-status-card strong {font-size:13px;}
+  .proposal-status-card>p {margin:0;font-size:11px;line-height:1.55;color:#735842;}
+  .proposal-status-card details {font-size:10px;}
+  .proposal-status-card details p {font-size:10px;line-height:1.5;}
+  .proposal-status-card>.fit-note {margin:0;color:var(--muted);font-size:10px;}
   .flow-status {margin:12px 0;padding:12px;background:#f6f5ed;border:1px solid var(--line);border-radius:10px;font-size:12px;}
   .flow-status p {font-size:12px;line-height:1.7;}
   .handoff-text {display:block;white-space:normal;overflow-wrap:anywhere;font-family:inherit;font-size:11px;color:var(--muted);margin:9px 0;}
@@ -80,6 +97,31 @@
   .module-target-grid small {grid-column:1/-1;font-size:9px;color:var(--muted);}
   .module-target-grid strong {font-size:17px;color:var(--green);}
   .module-target-grid span {font-size:9px;color:var(--muted);}
+  .fit-module-stack {display:grid;gap:0;}
+  .anthropometry-card,.calculation-card,.confirmation-card {display:grid;gap:9px;margin:0 0 13px;padding:12px;border:1px solid var(--line);border-radius:12px;background:white;}
+  .anthropometry-card {background:#f7f8f4;}
+  .fit-card-heading strong {font-size:13px;}
+  .fit-card-heading select {padding:5px 7px;border:1px solid var(--line);border-radius:7px;background:white;color:var(--text);font-size:10px;}
+  .anthropometry-card>p,.calculation-card>p,.confirmation-card>p {margin:0;font-size:10px;line-height:1.55;color:var(--muted);}
+  .anthro-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+  .anthro-field {display:grid;gap:4px;min-width:0;}
+  .anthro-field>span {font-size:10px;color:var(--text);}
+  .anthro-field input {width:100%;box-sizing:border-box;padding:8px 7px;border:1px solid #dce3d8;border-radius:7px;background:white;font-size:15px;font-weight:650;color:var(--green);}
+  .anthro-field small {font-size:8px;line-height:1.35;color:var(--muted);}
+  .fit-card-actions {display:flex;align-items:center;gap:8px;}
+  .fit-card-actions button {flex:1;font-size:11px;}
+  .fit-note {font-size:9px;color:var(--muted);}
+  .calculation-list {display:grid;gap:6px;}
+  .calculation-row {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:center;padding:8px 9px;border-radius:8px;background:#f7faf5;}
+  .calculation-row strong {display:block;font-size:11px;}
+  .calculation-row small {display:block;margin-top:3px;font-size:9px;line-height:1.4;color:var(--muted);}
+  .calculation-row b {font-size:14px;color:var(--green);white-space:nowrap;}
+  .confirmation-card {border-color:#e5c8aa;background:#fffaf3;}
+  .confirmation-question {font-size:12px!important;color:var(--text)!important;}
+  .confirmation-value {display:flex;align-items:center;gap:6px;}
+  .confirmation-value input {width:100%;padding:9px;border:1px solid #dfc49f;border-radius:8px;background:white;font-size:18px;font-weight:700;color:var(--green);}
+  .confirmation-value span {font-size:11px;color:var(--muted);}
+  .confirmation-card>button {width:100%;}
   .dimension-facts {display:flex;gap:8px;margin:12px 0;}
   .dimension-facts>div {flex:1;display:grid;gap:4px;background:var(--soft);border-radius:8px;padding:10px 5px;text-align:center;}
   .dimension-facts small {font-size:10px;color:var(--muted);}

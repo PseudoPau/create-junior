@@ -148,15 +148,13 @@ function renderTasks() {
   if(!taskAvailable(state.activeTask))state.activeTask=taskDone('reference')?'fit':'reference';
   const list=$('task-list');list.replaceChildren();
   if(state.proposal&&!state.conversationOpen) {
-    const proposal=state.proposal; const card=node('div',{class:'preview-banner'},node('strong',{},proposal.status==='ready'?(Object.keys(proposal.patch||{}).length?(proposal.purpose==='manufacturing'?'AI 加工方案 · 待采用':'待接受的设计修改'):'AI 说明'):'AI 暂未形成方案'),paragraph(proposal.summary || proposal.error || '请补充参考或检查 AI 设置。'));
-    if(proposal.status==='ready' && Object.keys(proposal.patch||{}).length)card.append(node('div',{class:'action-row'},button(proposal.purpose==='manufacturing'?'采用加工方案':'接受修改',acceptProposal,'primary'),button('不采用这版',dismissProposal)));
-    else card.append(button('知道了',dismissProposal));
+    const proposal=state.proposal; const card=node('div',{class:'proposal-status-card'},node('span',{class:'eyebrow'},proposal.status==='ready'?'模型候选':'模型生成状态'),node('strong',{},proposal.status==='ready'?'候选已在中央画布展示':'候选尚未形成'),paragraph(proposal.summary || proposal.error || '请补充参考或检查 AI 设置。'));
     if(proposal.status==='ready' && proposal.checks) {
       const checks=[...proposal.checks].sort((a,b)=>(a.severity==='blocker'?0:1)-(b.severity==='blocker'?0:1));
       const details=node('details',{},node('summary',{},'检查结果 · '+checks.filter(check=>check.severity==='blocker').length+' 项阻塞'),checks.map(issueCard));
       const uncovered=proposal.coverage?.not_checked||[];
       if(uncovered.length)details.append(paragraph('尚未覆盖：'+uncovered.join('；')));
-      card.append(details);
+      card.append(details,paragraph('采用或放弃请使用中央候选栏中的操作。'));
     }
     list.append(card);
   }
@@ -169,11 +167,20 @@ function renderTasks() {
 }
 
 function focusTask(id) { const part=state.project.parts?.find(part=>id==='fit'?part.kind==='seat_board':id==='make'?part.features?.length:true); if(part)state.viewport?.focus(part.id); }
+function referenceVisualCard(ref) {
+  const kind=ref.kind||'image',labels={image:'图片',link:'链接',note:'文字',document:'PDF'},card=node('article',{class:'reference-visual-card'});
+  if(kind==='image'&&ref.url)card.append(node('img',{src:ref.url,alt:ref.name||'参考图片',loading:'lazy'}));
+  else card.append(node('div',{class:'reference-visual-icon'},kind==='link'?'↗':kind==='document'?'▤':'✦'));
+  const body=node('div',{},node('span',{class:'eyebrow'},labels[kind]||'参考'),node('strong',{},ref.name||'未命名参考'));
+  if(ref.text)body.append(node('p',{},ref.text.length>110?ref.text.slice(0,110)+'…':ref.text));
+  if(kind==='link')body.append(node('a',{href:ref.url,target:'_blank',rel:'noopener noreferrer'},'打开参考 ↗'));
+  card.append(body);return card;
+}
 function renderReferenceTask(body) {
   const p=state.project,refs=p.references||[],pending=pendingRequest();
   if(!refs.length)body.append(paragraph('给我一个链接、一张图，或说说你想做什么。'));
   if(refs.length){
-    body.append(node('div',{class:'reference-receipt'},node('strong',{},'已收到 '+refs.length+' 项参考'),refs.map(ref=>node('div',{class:'reference-receipt-item'},node('span',{},({image:'图片',link:'链接',note:'说明',document:'PDF'})[ref.kind||'image']),node('strong',{},ref.name)))));
+    body.append(node('section',{class:'reference-evidence'},node('div',{class:'reference-evidence-heading'},node('span',{class:'eyebrow'},'参考证据'),node('strong',{},'已收到 '+refs.length+' 项')),node('div',{class:'reference-evidence-grid'},refs.map(referenceVisualCard))));
     for(const ref of refs.filter(ref=>ref.kind==='link')){
       if(state.resolvingReference===ref.id)body.append(node('p',{class:'flow-status','role':'status'},'正在读取网页标题和文字…'));
       else if(state.referenceErrors[ref.id])body.append(node('div',{class:'flow-status error','role':'alert'},paragraph(state.referenceErrors[ref.id]),button('重新读取链接',()=>resolveReference(ref.id),'quiet')));
@@ -181,7 +188,7 @@ function renderReferenceTask(body) {
       else body.append(button('读取链接内容',()=>resolveReference(ref.id),'quiet',state.busy));
     }
   }
-  if(state.proposal){body.append(button('查看三维候选',()=>setPanel('tasks',false),'primary'));return;}
+  if(state.proposal){body.append(paragraph('候选已在中央画布展示。先查看模型，再在底部候选栏采用或放弃。'));return;}
   const editor=node('form',{class:'reference-entry','data-flow-draft':'reference'});
   const input=node('textarea',{'aria-label':'参考链接或想法',placeholder:'粘贴产品链接，或描述想做的椅子…',maxlength:6000},state.referenceDraft);
   input.addEventListener('input',()=>{state.referenceDraft=input.value;persistDrafts();});
@@ -216,22 +223,60 @@ function renderFitTask(body) {
   body.append(form);
   if(!pending)body.append(button(p.scale?.confirmed?'尺寸已定，继续 →':'就用当前尺寸 →',acceptCurrentDimensions,'quiet',state.busy));
 }
+const anthropometryFields=[
+  ['stature_mm','身高','身高记录，用于建立个人模数档案'],
+  ['hip_breadth_mm','臀宽','坐姿时左右净宽'],
+  ['buttock_popliteal_length_mm','臀膝长','从臀部后缘到膝窝的长度'],
+  ['popliteal_height_mm','腘窝高','小腿自然垂下时的座高参考'],
+  ['shoe_sole_mm','鞋底厚度','穿鞋使用时从座高扣除']
+];
+const confirmationItems=[
+  ['seat_height_mm','座高','腘窝高 − 鞋底厚度 − 5 mm 下沉量'],
+  ['seat_depth_mm','座深','臀膝长 − 40 mm 靠背与前缘余量'],
+  ['seat_width_mm','座宽','臀宽 + 80 mm 左右活动余量'],
+  ['back_angle_deg','靠背角','当前模型目标；需要结合坐姿试靠确认']
+];
+function mmValue(value){return typeof value==='number'&&Number.isFinite(value)?Math.round(value):'';}
+function displayUnitValue(value,unit){const mm=mmValue(value);return mm===''?'':unit==='cm'?(mm/10).toFixed(mm%10?1:0):String(mm);}
+function unitToMm(value,unit){const number=Number(value);if(!Number.isFinite(number)||number<=0)return null;return Math.round(number*(unit==='cm'?10:1));}
+function moduleCalculations(module){
+  const a=module.anthropometry||{},t=module.target||{};
+  const results={};
+  if(a.popliteal_height_mm)results.seat_height_mm={value:Math.max(300,a.popliteal_height_mm-(a.shoe_sole_mm||0)-5),formula:'腘窝高 '+a.popliteal_height_mm+' − 鞋底 '+(a.shoe_sole_mm||0)+' − 下沉 5'};
+  if(a.buttock_popliteal_length_mm)results.seat_depth_mm={value:Math.max(180,a.buttock_popliteal_length_mm-40),formula:'臀膝长 '+a.buttock_popliteal_length_mm+' − 靠背与前缘余量 40'};
+  if(a.hip_breadth_mm)results.seat_width_mm={value:a.hip_breadth_mm+80,formula:'臀宽 '+a.hip_breadth_mm+' + 左右活动余量 80'};
+  results.back_angle_deg={value:t.back_angle_deg??10,formula:'沿用当前模型目标；需要试靠确认'};
+  return results;
+}
+async function saveAnthropometry(module,form){
+  const unit=form.querySelector('[name="anthro-unit"]').value,values={...module.anthropometry,measurement_source:'user_input'};
+  for(const [key] of anthropometryFields){const input=form.querySelector('[name="'+key+'"]');if(input?.value.trim()){const mm=unitToMm(input.value,unit);if(mm===null)throw new Error('请输入有效的 '+(anthropometryFields.find(item=>item[0]===key)?.[1]||'人体数据')+'。');values[key]=mm;}}
+  if(!Object.keys(values).some(key=>anthropometryFields.some(item=>item[0]===key)))throw new Error('至少填写一项人体数据。');
+  const confirmations={...(module.confirmations||{})};for(const [key] of confirmationItems)confirmations[key]=false;
+  await mutate({modules:state.project.modules.map(item=>item.id===module.id?{...item,anthropometry:values,confirmations,status:'target'}:item)},false);notice('人体数据已保存，家具尺寸建议已更新。');
+}
+async function confirmModuleTarget(module,key,rawValue,unit){
+  const value=key==='back_angle_deg'?Number(rawValue):unitToMm(rawValue,unit);
+  if(!Number.isFinite(value)||value<=0)throw new Error('请输入有效的尺寸。');
+  const confirmations={...(module.confirmations||{}),[key]:true};
+  const allConfirmed=confirmationItems.every(([itemKey])=>confirmations[itemKey]);
+  await mutate({modules:state.project.modules.map(item=>item.id===module.id?{...item,target:{...item.target,[key]:Math.round(value)},confirmations,status:allConfirmed?'confirmed':'target'}:item)},false);
+  notice((confirmationItems.find(item=>item[0]===key)?.[1]||'尺寸')+'已确认。');
+}
+function anthropometryCard(module){
+  const a=module.anthropometry||{},form=node('form',{class:'anthropometry-card'});
+  const heading=node('div',{class:'fit-card-heading'},node('div',{},node('span',{class:'eyebrow'},'人体模数'),node('strong',{},'输入你的实际数据')),node('select',{name:'anthro-unit','aria-label':'人体数据单位'},node('option',{value:'cm'},'cm'),node('option',{value:'mm'},'mm')));
+  form.append(heading,paragraph('数据只保存到当前项目，用来计算尺寸建议。可以只先填写你知道的项目。'));
+  const grid=node('div',{class:'anthro-grid'});
+  for(const [key,label,hint] of anthropometryFields){const field=node('label',{class:'anthro-field'},node('span',{},label),node('input',{type:'number',name:key,min:'0',step:'0.1',value:displayUnitValue(a[key],'cm'),placeholder:'未填写'}),node('small',{},hint));grid.append(field);}
+  form.append(grid,node('div',{class:'fit-card-actions'},button('保存人体数据',()=>saveAnthropometry(module,form),'primary',state.busy),node('span',{class:'fit-note'},'保存后统一换算为 mm')));return form;
+}
 function moduleFitCard(module,project) {
-  const target=module.target||module.targets||{};
-  const anthropometry=module.anthropometry||{};
-  const values=[
-    ['座宽',target.width_mm??target.seat_width_mm],
-    ['座深',target.depth_mm??target.seat_depth_mm],
-    ['座高',target.height_mm??target.seat_height_mm],
-    ['靠背角',target.angle_deg??target.back_angle_deg]
-  ].filter(([,value])=>value!==null&&value!==undefined&&value!=='');
-  const kindLabels={support:'支撑',reach:'触达',clearance:'净空',storage:'收纳',surface:'操作面'};
-  const statusLabels={inferred:'待确认',target:'目标',confirmed:'已确认',conflict:'有冲突',needs_review:'需重新核对',observed:'已观察'};
-  const title=module.name||module.label||kindLabels[module.kind]||'当前使用方式';
-  const purpose=module.purpose||'';
-  const people=module.occupant||anthropometry.occupant||({adult:'成人',child:'儿童',older_adult:'长者'})[anthropometry.user_group]||anthropometry.posture;
-  const parts=(module.affected_part_ids||module.part_ids||[]).map(id=>project.parts?.find(part=>part.id===id)?.name||id).filter(Boolean);
-  const status=statusLabels[module.status]||'适配目标';
+  const target=module.target||module.targets||{},anthropometry=module.anthropometry||{};
+  const values=[['座宽',target.width_mm??target.seat_width_mm],['座深',target.depth_mm??target.seat_depth_mm],['座高',target.height_mm??target.seat_height_mm],['靠背角',target.angle_deg??target.back_angle_deg]].filter(([,value])=>value!==null&&value!==undefined&&value!=='');
+  const kindLabels={support:'支撑',reach:'触达',clearance:'净空',storage:'收纳',surface:'操作面'},statusLabels={inferred:'待确认',target:'目标',confirmed:'已确认',conflict:'有冲突',needs_review:'需重新核对',observed:'已观察'};
+  const title=module.name||module.label||kindLabels[module.kind]||'当前使用方式',purpose=module.purpose||'',people=module.occupant||anthropometry.occupant||({adult:'成人',child:'儿童',older_adult:'长者'})[anthropometry.user_group]||anthropometry.posture;
+  const parts=(module.affected_part_ids||module.part_ids||[]).map(id=>project.parts?.find(part=>part.id===id)?.name||id).filter(Boolean),status=statusLabels[module.status]||'适配目标';
   const card=node('section',{class:'module-fit-card'},node('div',{class:'module-fit-heading'},node('div',{},node('span',{class:'eyebrow'},'当前适配目标'),node('h3',{},title)),node('span',{class:'module-status'},status)));
   if(purpose)card.append(node('p',{class:'module-fit-purpose'},purpose));
   if(people||module.posture)card.append(node('p',{class:'module-fit-meta'},'使用方式 · '+[people,module.posture&&module.posture!==people?module.posture:null].filter(Boolean).join(' · ')));
@@ -239,6 +284,18 @@ function moduleFitCard(module,project) {
   else card.append(node('p',{class:'module-fit-empty'},'先告诉我谁使用、怎么使用，Junior 会把它整理成可调整的尺寸目标。'));
   if(parts.length)card.append(node('p',{class:'module-fit-parts'},'影响部件 · '+parts.join('、')));
   if(module.status==='conflict'||module.status==='needs_review')card.classList.add('is-warning');
+  const calculations=moduleCalculations(module),calculationCard=node('section',{class:'calculation-card'},node('div',{class:'fit-card-heading'},node('div',{},node('span',{class:'eyebrow'},'人体模数 → 家具尺寸'),node('strong',{},'计算出的尺寸建议')),node('span',{class:'fit-note'},'建议值')));
+  calculationCard.append(paragraph('依据你保存的人体数据计算；采用前请试坐并核对空间。'));
+  calculationCard.append(node('div',{class:'calculation-list'},confirmationItems.map(([key,label,formula])=>{const result=calculations[key],current=target[key];return node('div',{class:'calculation-row'},node('div',{},node('strong',{},label),node('small',{},result?.formula||formula)),node('b',{},result?Math.round(result.value)+(key==='back_angle_deg'?'°':' mm'):(current?Math.round(current)+(key==='back_angle_deg'?'°':' mm'):'待输入')));})));
+  const confirmationCard=moduleConfirmationCard(module,calculations);return node('div',{class:'fit-module-stack'},card,anthropometryCard(module),calculationCard,confirmationCard);
+}
+function moduleConfirmationCard(module,calculations){
+  const target=module.target||{},confirmations=module.confirmations||{},pending=confirmationItems.find(([key])=>!confirmations[key]);
+  const card=node('section',{class:'confirmation-card'},node('div',{class:'fit-card-heading'},node('div',{},node('span',{class:'eyebrow'},'逐项确认'),node('strong',{},pending?'待确认 1 / '+confirmationItems.length:'已完成逐项确认')),node('span',{class:'fit-note'},pending?'一次确认一项':'全部已确认')));
+  if(!pending){card.append(paragraph('每个尺寸都已单独确认。后续修改人体数据或模型后，会重新进入待确认。'));return card;}
+  const [key,label,formula]=pending,result=calculations[key],value=result?.value??target[key]??'';
+  const unit=key==='back_angle_deg'?'°':'mm',input=node('input',{type:'number',min:'1',step:'1',value:value?Math.round(value):'', 'aria-label':label+'数值'});
+  card.append(node('p',{class:'confirmation-question'},'现在确认：'+label),node('div',{class:'confirmation-value'},input,node('span',{},unit)),node('p',{class:'fit-note'},'依据：'+(result?.formula||formula)),button('确认这个尺寸',()=>confirmModuleTarget(module,key,input.value,'mm'),'primary',state.busy),paragraph('确认后自动进入下一项；这不是安全或承载结论，仍需试用和复核。'));
   return card;
 }
 function modelDimensionFacts() {

@@ -98,6 +98,7 @@ class Module(Record):
     posture: str = Field(default="", max_length=160)
     anthropometry: dict[str, float | str | None] = Field(default_factory=dict)
     target: dict[str, float | str | None] = Field(default_factory=dict)
+    confirmations: dict[str, bool] = Field(default_factory=dict)
     constraints: list[ModuleConstraint] = Field(default_factory=list, max_length=50)
     source_ids: list[str] = Field(default_factory=list, max_length=50)
     status: Literal["inferred", "target", "confirmed", "conflict", "needs_review"] = "inferred"
