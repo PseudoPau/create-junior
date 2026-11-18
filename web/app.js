@@ -120,7 +120,7 @@ function render() {
   renderGenerationConcept(hasReferences&&!hasModel);
   const handoff=$('generation-handoff');handoff.replaceChildren();if(pendingRequest())handoff.append(handoffCard());
   $('canvas-title').textContent=preview?'待采用的模型候选':hasModel?p.name:'参考与模型';
-  $('canvas-status').textContent=preview?'候选预览':p.confirmed_revision===p.revision?'已确认 v'+p.revision:hasModel?'设计中':pendingRequest()?'等待会话返回':hasReferences?'参考已保存':'等待参考';
+  $('canvas-status').textContent=preview?'候选预览':state.generating?'正在生成候选…':p.confirmed_revision===p.revision?'已确认 v'+p.revision:hasModel?'设计中':pendingRequest()?'等待会话返回':hasReferences?'参考已保存':'等待参考';
   document.querySelectorAll('[data-flow]').forEach(el=>{el.disabled=!!state.proposal;el.setAttribute('aria-current',(state.activeTask==='confirm'?'make':state.activeTask)===el.dataset.flow?'step':'false');el.setAttribute('aria-description',taskAvailable(el.dataset.flow)?'':el.dataset.flow==='fit'?'需要先采用参考模型':'需要先确定目标尺寸');});
   $('flow-drawings').disabled=!p.parts?.length;
   renderCandidateActions();
@@ -139,9 +139,9 @@ function renderGenerationConcept(show) {
   const host=$('generation-concept');if(!host)return;host.replaceChildren();
   if(!show)return;
   const pending=pendingRequest();
-  const card=node('section',{class:'generation-concept-card'},node('span',{class:'eyebrow'},'下一步'),node('h3',{},pending?'设计构思已提交':'展开设计构思'),paragraph(pending?'需求已保存，等待当前聊天返回一版可编辑模型。':'参考已经收到。我会先整理家具类型、主要结构和使用方式，再给你一版可编辑模型。'));
+  const card=node('section',{class:'generation-concept-card'},node('span',{class:'eyebrow'},state.generating?'正在处理':'下一步'),node('h3',{},pending?'设计构思已提交':state.generating?'正在生成可编辑模型':'展开设计构思'),paragraph(pending?'需求已保存，等待当前聊天返回一版可编辑模型。':state.generating?'正在把参考转换为可编辑候选，完成后会直接显示在中央画布。':'参考已经收到。我会先整理家具类型、主要结构和使用方式，再给你一版可编辑模型。'));
   if(state.generationError)card.append(node('p',{class:'flow-status error'},state.generationError));
-  if(!pending)card.append(node('div',{class:'generation-concept-actions'},button(state.generating?'正在生成…':state.aiStatus?.ready?'生成可编辑模型 →':'提交设计构思',generateModel,'primary',state.busy||!!state.resolvingReference),button('补充参考',()=>openReferenceComposer(''),'quiet',state.busy||!!state.resolvingReference)));
+  if(!pending)card.append(node('div',{class:'generation-concept-actions'},button(state.generating?'正在生成…':state.aiStatus?.ready?'生成可编辑模型 →':'提交设计构思',generateModel,'primary',state.busy||state.generating),button('补充参考',()=>openReferenceComposer(''),'quiet',state.busy||state.generating)));
   host.append(card);
 }
 function renderTasks() {
@@ -455,7 +455,7 @@ async function beginGeneration() {
 async function generateModel() {
   requireNoProposal();if(state.busy)return;
   if(!state.project.references?.length)throw new Error('先添加图片、链接或文字参考。');
-  state.generating=true;renderGenerationControls();
+  state.generating=true;render();
   const projectId=state.project.id,revision=state.project.revision;
   try {
     await guarded(async()=>{
