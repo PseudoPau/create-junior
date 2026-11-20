@@ -1,83 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Create Junior · 木作工作台</title>
-<link rel="stylesheet" href="/static/web.css?v=r1-21">
-<link rel="stylesheet" href="/static/workspace.css?v=r1-21">
-<link rel="stylesheet" href="/static/guidance.css?v=r1-21">
-<link rel="stylesheet" href="/static/drawing-browser.css?v=r1-21"><link rel="stylesheet" href="/static/product-pages.css?v=r1-21">
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark">
+<title>Junior · 老家具复原与适己化工作室</title><link rel="stylesheet" href="/static/studio.css?v=1">
 <script type="importmap">{"imports":{"three":"/static/vendor/three/three.module.js","three/addons/":"/static/vendor/three/addons/"}}</script>
-</head>
-<body data-page="home">
-<header class="topbar">
-  <a class="brand" href="/" id="home-link" aria-label="Create Junior 首页">junior<span class="brand-dot">.</span><small>MAKE IT YOURS</small></a>
-  <div class="project-heading"><input id="project-name" aria-label="项目名称" value="我的木椅" maxlength="100"><span id="save-state">正在连接…</span></div>
-  <div class="top-actions"><div class="panel-switches" role="group" aria-label="工作区面板"><button id="toggle-sidebar" class="panel-toggle" aria-label="收起工作侧栏" aria-expanded="true" aria-controls="work-sidebar" title="收起工作侧栏"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M7 3v14M4 7h1M4 10h1M4 13h1"/></svg><span>侧栏</span></button></div><details id="more-menu" class="more-menu"><summary>更多</summary><div class="more-menu-popover"><button id="more-home" class="more-item">开始新设计</button><button id="more-demo" class="more-item">体验案例</button><label class="more-project">打开项目<select id="project-switch" aria-label="切换项目"><option value="">选择项目</option></select></label><button id="new-project" class="more-item">新建项目</button><button id="undo" class="more-item" title="撤销上一次设计修改" disabled>撤销上一步</button><button id="package-button" class="more-item" disabled>打开制作包</button><button id="ai-settings" class="more-item">设置</button><button id="more-sidebar" class="more-item">显示 / 隐藏侧栏</button></div></details></div>
-</header>
-<section id="home-page" class="product-page home-page" aria-label="开始制作">
-  <div class="home-intro"><span class="eyebrow">MAKE IT YOURS</span><h1>喜欢的家具，<br>做成适合你的样子。</h1><p>带来参考，调整到适合你的尺寸，再一起确定材料、连接和制作方式。</p></div>
-  <div class="home-start-grid"><section class="home-compose"><h2>从你的参考开始</h2><form id="home-form"><label for="home-input">产品链接或制作想法</label><textarea id="home-input" maxlength="6000" placeholder="粘贴喜欢的家具链接，或告诉我：想做什么、放在哪里、希望改什么…"></textarea><div class="home-compose-actions"><button id="home-upload" type="button">＋ 图片 / PDF</button><button id="home-start" type="submit" class="primary">开始我的设计 →</button></div></form><p id="home-channel-note" class="hint"></p><p id="home-error" class="entry-error" role="alert"></p></section>
-  <section class="home-example"><span class="eyebrow">从案例了解流程</span><h2>CAFE CHAIR</h2><div class="sample-drawing" aria-hidden="true"><span class="sample-back"></span><span class="sample-seat"></span><span class="sample-leg"></span><span class="sample-foot"></span></div><p>6 个板件 · 可调整座宽<br>查看连接、五金与装配图纸</p><button id="home-demo">体验这个案例 ↗</button><small>复制为独立项目；加载已有方案，不分析你的参考。</small></section></div>
-  <section class="home-projects"><div class="section-title"><h2>我的项目</h2><button id="home-project-refresh" class="quiet">刷新列表</button></div><p class="hint">保存在本机。继续上次的设计、候选与调整要求。</p><div id="home-project-list" class="project-grid"></div></section>
-</section>
-<nav id="workspace-flow" class="workspace-flow" aria-label="当前任务"><button data-flow="reference">参考</button><button data-flow="fit">尺寸</button><button data-flow="make">材料</button><button id="flow-drawings">资料</button></nav>
-<main id="design-page" class="workspace">
-  <aside id="work-sidebar" class="work-sidebar" aria-label="项目工作侧栏">
-    <div class="sidebar-header"><strong>本次制作</strong><button id="sidebar-canvas" class="quiet">返回模型</button><details id="sidebar-library" class="sidebar-library"><summary>资料 <span aria-hidden="true">⌄</span></summary><nav aria-label="项目资料入口"><button data-tab="references">参考资料</button><button data-tab="versions">设计版本</button><button data-tab="layers">全部部件</button><button data-tab="lists">完整清单</button></nav></details></div>
-    <div class="compact-projects"><select id="compact-project-switch" aria-label="切换项目"></select><button id="compact-new-project" class="quiet">新建项目</button></div>
-    <div id="sidebar-context-heading" class="sidebar-context-heading" hidden><button data-sidebar="tasks" class="sidebar-back">← 回到当前步骤</button><small id="sidebar-step-summary"></small><strong id="sidebar-context-title"></strong></div>
-  <section id="task-panel" class="task-panel" aria-label="设计任务">
-    <div class="panel-heading"><h1>这一步</h1><span id="progress" class="count">0 / 4</span></div>
-    <div id="task-list" class="task-list" aria-live="polite"></div>
-  </section>
-    <section id="context-panel" class="context-panel" aria-label="项目资料" hidden><div id="context-content" class="context-content"></div></section>
-  </aside>
-  <section class="canvas-panel" aria-label="三维工作台">
-    <div class="canvas-heading"><span id="canvas-title">从喜欢的椅子开始</span><span id="canvas-status" class="tag">等待参考</span></div>
-    <div class="viewport-toolbar" role="toolbar" aria-label="模型工具">
-      <button data-tool="select" class="active" title="选择部件" aria-label="选择"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 2 11 8-5 1-2 6Z"/></svg><span>选择</span></button>
-      <button data-tool="measure" title="点击两个模型表面点" aria-label="卷尺"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m3 13 10-10 4 4L7 17ZM6 10l2 2m1-5 2 2m1-5 2 2"/></svg><span>卷尺</span></button><span class="separator"></span>
-      <button data-tool="translate" title="移动部件" aria-label="移动"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v16M2 10h16M7 5l3-3 3 3m-6 10 3 3 3-3M5 7l-3 3 3 3m10-6 3 3-3 3"/></svg><span>移动</span></button>
-      <button data-tool="rotate" title="旋转部件" aria-label="旋转"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8a6 6 0 1 0 0 5M16 3v5h-5"/></svg><span>旋转</span></button>
-      <button data-tool="scale" title="缩放部件" aria-label="缩放"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10v7h7M10 3h7v7M17 3 8 12"/></svg><span>缩放</span></button>
-      <button data-tool="mirror" title="镜像部件" aria-label="镜像"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v3m0 3v4m0 3v3M7 4 2 15h5Zm6 0 5 11h-5Z"/></svg><span>镜像</span></button>
-    </div>
-    <div id="viewport" class="viewport"></div>
-    <div id="empty-canvas" class="empty-canvas"><div class="quick-reference-card">
-      <span class="eyebrow">从喜欢的家具，到适合你的做法</span>
-      <h2 id="quick-reference-title">你想复刻哪件家具？</h2>
-      <p id="quick-reference-hint">带入成品参考，先得到可编辑模型，再调整尺寸、材料和连接。</p>
-      <form id="quick-reference-form" class="quick-reference-form">
-        <label for="quick-reference-input">产品链接或制作想法</label>
-        <textarea id="quick-reference-input" placeholder="粘贴产品链接，或描述家具与想改的地方…" maxlength="6000"></textarea>
-        <div class="reference-input-actions"><button type="button" data-upload>＋ 图片 / PDF</button><span>PDF 目前只保存，不自动解析</span></div>
-        <div id="reference-receipts" class="reference-receipts"></div>
-        <button id="empty-reference-start" class="primary" type="submit" disabled>提交设计请求 →</button>
-      </form>
-      <div id="generation-concept"></div>
-      <p id="quick-reference-error" class="entry-error" role="alert"></p>
-      <div id="generation-handoff"></div>
-      <div class="sample-entry"><span>想先了解完整流程？</span><button id="start-cafe-demo" type="button">体验 CAFE CHAIR 样例 ↗</button><small>加载现成模型，不分析你的参考；会新建独立项目。</small></div>
-    </div></div>
-    <div id="viewport-error" class="viewport-error hidden" role="alert"></div>
-    <div id="measure-result" class="measure-result hidden" aria-live="polite"></div>
-    <div id="model-guide" class="model-guide hidden" aria-live="polite"></div>
-    <div class="view-controls" role="toolbar" aria-label="标准视图"><button id="hardware-toggle" aria-pressed="true" title="显示或隐藏五金">五金</button><button data-view="front">前</button><button data-view="right">右</button><button data-view="top">顶</button><button data-view="iso" class="active">等轴</button><button data-view="fit">适应</button></div>
-    <div class="canvas-footer"><span id="selection-label">尚未选择部件</span><span>中键旋转 · 右键平移 · 滚轮缩放</span><span>mm</span></div>
-    <div id="candidate-actions" class="candidate-actions" hidden></div>
-    <section id="conversation-panel" class="conversation-panel" aria-label="与 Junior 协作" hidden><header><h2>与 Junior 协作</h2><button id="conversation-close" class="quiet" aria-label="收起对话">收起</button></header><div id="conversation-messages" role="log" aria-live="polite"></div></section>
-    <footer class="command-bar"><button id="conversation-toggle" aria-label="展开对话" aria-expanded="false" aria-controls="conversation-panel">✦</button><form id="command-form"><input id="command-input" autocomplete="off" placeholder="告诉我怎么改，例如：座板宽度改为420mm" aria-label="告诉我怎么改"><button type="submit" class="command-send" aria-label="发送命令">↑</button></form><div id="command-suggestions" class="command-suggestions" aria-label="快捷建议"></div><span id="command-state">告诉我怎么改</span></footer>
-  </section>
-</main>
-
-<section id="package-page" class="product-page package-page" aria-label="制作包"><div class="package-page-heading"><div><span class="eyebrow">从设计到动手制作</span><h1>制作包</h1></div><button id="package-back">← 返回设计</button></div><div id="package-page-content"></div></section>
-<input id="proposal-input" type="file" accept="application/json,.json" hidden>
-<input id="reference-input" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,.pdf" multiple hidden>
-<dialog id="reference-dialog" aria-labelledby="reference-dialog-title"><form id="reference-form"><div class="dialog-head"><h2 id="reference-dialog-title">添加参考</h2><button type="button" id="reference-close" aria-label="关闭添加参考">×</button></div><label class="field">产品链接或参考说明<textarea id="reference-text" maxlength="6000" placeholder="粘贴产品页面链接，或写下用途、已知尺寸、想保留的特点…" required></textarea></label><p id="reference-error" role="alert"></p><button id="reference-save" class="primary" type="submit">保存参考</button></form></dialog>
-<dialog id="reference-preview" aria-labelledby="reference-preview-title"><div class="dialog-head"><h2 id="reference-preview-title"></h2><button id="reference-preview-close" aria-label="关闭参考预览">×</button></div><div id="reference-preview-content"></div></dialog>
-<dialog id="ai-dialog" aria-labelledby="ai-title"><div class="dialog-head"><h2 id="ai-title">AI 连接与协作</h2><button id="ai-close" aria-label="关闭 AI 设置">×</button></div><div id="ai-settings-content"></div></dialog>
-<div id="notice" class="notice hidden" role="status"></div>
-<script type="module" src="/static/app.js?v=r1-21"></script>
-</body>
-</html>
+</head><body><div id="studio" class="studio">
+<header class="app-header"><a class="brand" href="/" aria-label="Junior 首页">junior<span>.</span></a><div class="project-heading"><select id="project-picker" aria-label="打开项目"><option value="">新的设计</option></select><small id="save-status">正在连接本机工作室…</small></div><div class="header-actions"><button id="new-project">新设计</button><button id="settings-button" aria-label="AI 设置">设置</button></div></header>
+<main class="studio-layout"><aside class="studio-guide" aria-label="当前设计步骤"><nav id="stage-nav" class="stage-nav" aria-label="设计阶段"></nav><section id="step-body" class="step-body" aria-labelledby="step-title"></section><p id="step-error" class="step-error" role="alert" hidden></p><footer id="step-actions" class="step-actions"></footer></aside><section class="studio-workspace" aria-label="模型工作视口"><div id="viewport-tools" class="viewport-tools"></div><div class="viewport-wrap"><div id="viewport" class="viewport"></div><div id="viewport-empty" class="viewport-empty"><span class="empty-mark">J</span><h2>一把椅子，从你的参考开始。</h2><p>复原它，再做成适合你的样子。</p></div><div id="viewport-overlay" class="viewport-overlay"></div><section id="drawing-view" class="drawing-view" aria-label="图纸预览" hidden></section></div></section></main>
+</div><noscript>Junior 需要启用 JavaScript 才能打开三维工作室。</noscript><script type="module" src="/static/studio.js?v=1"></script></body></html>

@@ -10,16 +10,18 @@ const copy = value => structuredClone(value);
 export class WorkshopViewport {
   constructor(element, callbacks = {}) {
     this.element = element; this.callbacks = callbacks; this.parts = []; this.meshes = []; this.mode = 'select'; this.selectedId = null; this.measurePoints = []; this.hiddenIds = new Set(); this.inspection = null; this.cameraMotion = null; this.hardwareData = []; this.hardwareObjects = []; this.hardwareVisible = true; this.exploded = false; this.partDisplayOffsets = new Map();
+    this.joints=[];this.jointGroup=null;this.inspectionView=null;this.highlightIds=new Set();
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color('#eff1eb');
     this.camera = new THREE.PerspectiveCamera(40, 1, 1, 1000000); this.camera.position.set(1100, 850, 1300);
     this.renderer = new THREE.WebGLRenderer({ antialias: true }); this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); this.renderer.outputColorSpace = THREE.SRGBColorSpace; element.append(this.renderer.domElement);
+    this.renderer.domElement.setAttribute('role','img');this.renderer.domElement.setAttribute('aria-label','可旋转、缩放、选择和聚焦的家具三维模型');this.renderer.domElement.style.touchAction='none';
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x909b81, 2.5));
     const light = new THREE.DirectionalLight(0xffffff, 2); light.position.set(800, 1500, 1100); this.scene.add(light);
-    this.grid = new THREE.GridHelper(2400, 24, 0xd0d9c7, 0xe1e6da); this.scene.add(this.grid);
+    this.grid = new THREE.GridHelper(2400, 24, 0xd0d9c7, 0xe1e6da);this.grid.material.transparent=true;this.grid.material.opacity=.5;this.grid.position.y=-.5; this.scene.add(this.grid);
     this.group = new THREE.Group(); this.scene.add(this.group);
     this.hardwareGroup = new THREE.Group(); this.scene.add(this.hardwareGroup);
     this.hardwareGuides = new THREE.Group(); this.scene.add(this.hardwareGuides);
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement); this.controls.target.set(0, 350, 0); this.controls.enableDamping = true; this.controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN }; this.controls.minDistance = 20; this.controls.maxDistance = 20000;
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement); this.controls.target.set(0, 350, 0); this.controls.enableDamping = true; this.controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }; this.controls.touches={ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_PAN};this.controls.minDistance = 20; this.controls.maxDistance = 20000;
     this.transform = new TransformControls(this.camera, this.renderer.domElement); this.transform.setSize(.8); this.scene.add(this.transform.getHelper());
     this.transform.addEventListener('dragging-changed', event => { this.draggingTransform = event.value; this.controls.enabled = !event.value; });
     this.transform.addEventListener('mouseUp', () => this.commitTransform());
@@ -29,10 +31,66 @@ export class WorkshopViewport {
     this.renderer.domElement.addEventListener('wheel', () => this.cancelCameraMotion(), { passive:true, capture:true });
     this.renderer.domElement.addEventListener('pointerdown', event => { this.pointerStart = { x: event.clientX, y: event.clientY, button: event.button, transform: !!this.transform.axis }; });
     this.renderer.domElement.addEventListener('pointerup', event => this.pick(event));
+    this.renderer.domElement.addEventListener('dblclick',event=>{if(this.mode!=='select')return;const hit=this.partAt(event);if(hit){this.setSelection(hit.object.userData.partId,true);this.focus(hit.object.userData.partId);}});
     this.resizeObserver = new ResizeObserver(() => this.resize()); this.resizeObserver.observe(element); this.resize();
-    this.renderer.setAnimationLoop(time => { this.updateCameraMotion(time); this.controls.update(); this.updateAssemblyLabels(); this.renderer.render(this.scene, this.camera); });
+    this.dimensionLayer=document.createElement('div');this.dimensionLayer.className='model-dimensions';element.append(this.dimensionLayer);this.dimensionLabels=[];
+    this.jointIndexLayer=document.createElement('div');this.jointIndexLayer.className='model-joint-index';element.append(this.jointIndexLayer);
+    this.dimensionLines=new THREE.Group();this.scene.add(this.dimensionLines);
+    this.refreshTheme();this.themeObserver=new MutationObserver(()=>this.refreshTheme());this.themeObserver.observe(document.documentElement,{attributes:true,attributeFilter:['class','style','data-theme']});this.themeMedia=window.matchMedia('(prefers-color-scheme: dark)');this.themeListener=()=>this.refreshTheme();this.themeMedia.addEventListener('change',this.themeListener);
+    this.renderer.setAnimationLoop(time => {if(!this.element.isConnected)return; this.updateCameraMotion(time); this.controls.update(); this.updateAssemblyLabels();this.updateDimensionLabels();this.updateJointIndex(); this.renderer.render(this.scene, this.camera); });
   }
-  resize() { const width = this.element.clientWidth, height = this.element.clientHeight; if (!width || !height) return; this.renderer.setSize(width, height); this.camera.aspect = width / height; this.camera.updateProjectionMatrix(); }
+  captureView(){return {position:this.camera.position.toArray(),target:this.controls.target.toArray()};}
+  refreshTheme(){
+    const resolved=(name,fallback)=>{if(!getComputedStyle(this.element).getPropertyValue(name).trim())return fallback;const probe=document.createElement('span');probe.style.color='var('+name+')';probe.style.display='none';this.element.append(probe);const value=getComputedStyle(probe).color;probe.remove();return value;};
+    this.palette={background:resolved('--canvas','#eff1eb'),accent:resolved('--accent','#b95d40'),line:resolved('--line','#d0d9c7'),wood:'#c7ad83',edge:'#9c886c'};
+    this.scene.background.set(this.palette.background);this.grid.material.vertexColors=false;this.grid.material.color.set(this.palette.line);this.grid.material.needsUpdate=true;this.applyAppearance();
+    this.dimensionLines?.traverse(child=>child.material?.color?.set(this.palette.accent));
+  }
+  restoreView(view){if(view)this.moveCamera(new THREE.Vector3(...view.target),new THREE.Vector3(...view.position));}
+  highlightParts(ids){this.clearInspection();this.highlightIds=new Set(ids);this.applyAppearance();}
+  setDimensions(items){
+    this.dimensionLayer.replaceChildren();this.dimensionLabels=[];this.release(this.dimensionLines);this.dimensionLines.clear();
+    for(const item of items){
+      const points=(item.points||[item.start,item.end]).filter(Boolean).map(point=>new THREE.Vector3(...point));if(!points.length)continue;
+      const start=points[0],end=points[points.length-1];
+      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:this.palette.accent,depthTest:false}));line.renderOrder=40;this.dimensionLines.add(line);
+      let label;
+      if(item.value!==undefined){label=document.createElement('label');label.className='model-dimension model-dimension-input';const input=document.createElement('input');input.type='text';input.inputMode='decimal';input.value=String(item.value);input.setAttribute('aria-label',item.label||'尺寸');
+        input.addEventListener('input',()=>item.onInput?.(input.value));input.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Enter'){event.preventDefault();item.onCommit?.(input.value);}else if(event.key==='Escape'){event.preventDefault();item.onCancel?.();}});
+        const unit=document.createElement('span');unit.textContent=item.unit||'mm';label.append(input,unit);
+      }else{label=document.createElement('button');label.type='button';label.className='model-dimension';label.textContent=item.label;label.setAttribute('aria-label',(item.onEdit?'修改':'查看')+item.label);if(item.onEdit)label.addEventListener('click',item.onEdit);}
+      this.dimensionLayer.append(label);
+      this.dimensionLabels.push({label,point:item.labelPoint?new THREE.Vector3(...item.labelPoint):start.clone().add(end).multiplyScalar(.5)});
+    }
+  }
+  updateDimensionLabels(){
+    const width=this.element.clientWidth,height=this.element.clientHeight;this.camera.updateMatrixWorld();
+    for(const {label,point} of this.dimensionLabels||[]){const p=point.clone().project(this.camera),x=(p.x+1)*width/2,y=(-p.y+1)*height/2;label.hidden=p.z>1||p.z< -1||x<0||x>width||y<0||y>height;label.style.left=Math.min(width-64,Math.max(64,x))+'px';label.style.top=Math.min(height-35,Math.max(35,y))+'px';}
+  }
+  resize() { const width = this.element.clientWidth, height = this.element.clientHeight; if (!width || !height) return; this.renderer.setSize(width, height); this.updateProjection(); }
+  setBottomOcclusion(pixels=0) {
+    const inset=Math.max(0,pixels);
+    if(Math.abs((this.bottomOcclusion||0)-inset)<1)return;
+    const previous=this.bottomOcclusion||0;
+    if(!previous&&inset){this.occlusionView={position:this.camera.position.clone(),target:this.controls.target.clone()};}
+    this.bottomOcclusion=inset;
+    if(!inset&&this.occlusionView){this.camera.position.copy(this.occlusionView.position);this.controls.target.copy(this.occlusionView.target);this.occlusionView=null;this.controls.update();}
+    else if(inset&&this.occlusionView){
+      const base=this.occlusionView, direction=base.position.clone().sub(base.target),factor=1+Math.min(inset,this.element.clientHeight*.46)/Math.max(this.element.clientHeight,1)*.72;
+      this.camera.position.copy(base.target).addScaledVector(direction,factor);
+      this.controls.target.copy(base.target);this.controls.target.y-=Math.min(inset,260)*.22;this.controls.update();
+    }
+    this.updateProjection();
+  }
+  updateProjection() {
+    const width=this.element.clientWidth,height=this.element.clientHeight;
+    if(!width||!height)return;
+    this.camera.aspect=width/height;
+    const shift=Math.min(this.bottomOcclusion||0,height*.18)/2;
+    if(shift)this.camera.setViewOffset(width,height,0,shift,width,height);
+    else this.camera.clearViewOffset();
+    this.camera.updateProjectionMatrix();
+  }
   release(object) { object.traverse(child => { if (child.geometry) child.geometry.dispose(); if (child.material) (Array.isArray(child.material) ? child.material : [child.material]).forEach(material => { material.map?.dispose(); material.dispose(); }); }); }
   geometry(part) {
     const clipped = clippedBoardGeometry(part); if (clipped) return clipped;
@@ -71,8 +129,13 @@ export class WorkshopViewport {
           const axis=feature.direction_local?new THREE.Vector3(...feature.direction_local).normalize():normal.clone().negate();
           const radial=new THREE.Vector3().crossVectors(axis,Math.abs(axis.x)<.8?new THREE.Vector3(1,0,0):new THREE.Vector3(0,1,0)).normalize(),other=new THREE.Vector3().crossVectors(axis,radial);
           for(let i=0;i<48;i++){const angle=2*Math.PI*i/48,v=radial.clone().multiplyScalar(radius*Math.cos(angle)).addScaledVector(other,radius*Math.sin(angle));if(Math.abs(normal.dot(axis))>.001)v.addScaledVector(axis,-normal.dot(v)/normal.dot(axis));points.push(entry.clone().add(v).addScaledVector(normal,.7));}
-          const drillLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([entry,entry.clone().addScaledVector(axis,feature.depth_mm)]),new THREE.LineDashedMaterial({color:0x44806d,dashSize:2,gapSize:1}));drillLine.computeLineDistances();drillLine.userData.feature=feature.id;mesh.add(drillLine);
-        }else for (let i=0;i<48;i++) { const a = 2*Math.PI*i/48; points.push(this.facePoint(part,feature.face,feature.u_mm+radius*Math.cos(a),feature.v_mm+radius*Math.sin(a))); }
+          const drillLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([entry,entry.clone().addScaledVector(axis,feature.depth_mm)]),new THREE.LineDashedMaterial({color:0x44806d,dashSize:2,gapSize:1}));drillLine.computeLineDistances();drillLine.userData.feature=feature.id;drillLine.userData.drillAxis=true;mesh.add(drillLine);
+        }else{
+          for (let i=0;i<48;i++) { const a = 2*Math.PI*i/48; points.push(this.facePoint(part,feature.face,feature.u_mm+radius*Math.cos(a),feature.v_mm+radius*Math.sin(a))); }
+          const axis=new THREE.Vector3(...({top:[0,-1,0],bottom:[0,1,0],left:[1,0,0],right:[-1,0,0],front:[0,0,-1],back:[0,0,1]})[feature.face]);
+          const entry=this.facePoint(part,feature.face,feature.u_mm,feature.v_mm,0),drillLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([entry,entry.clone().addScaledVector(axis,feature.depth_mm)]),new THREE.LineDashedMaterial({color:0xb95d40,dashSize:2,gapSize:1}));
+          drillLine.computeLineDistances();drillLine.userData.feature=feature.id;drillLine.userData.drillAxis=true;mesh.add(drillLine);
+        }
       } else {
         const w = feature.width_mm || 0, l = feature.length_mm || 0;
         for (const [du,dv] of [[0,0],[w,0],[w,l],[0,l]]) points.push(this.facePoint(part,feature.face,feature.u_mm+du,feature.v_mm+dv));
@@ -80,10 +143,12 @@ export class WorkshopViewport {
       const marker = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({ color:0x44806d })); marker.userData.feature = feature.id; mesh.add(marker);
     }
   }
-  load(parts, { fit = false, hardware } = {}) {
+  load(parts, { fit = false, hardware, joints } = {}) {
     const wasEmpty = !this.parts.length; this.transform.detach(); this.release(this.group); this.group.clear(); this.meshes = []; this.parts = copy(parts || []);
     this.release(this.hardwareGroup); this.hardwareGroup.clear(); this.hardwareObjects = [];
     this.hardwareData = copy(hardware === undefined ? (this.parts.length ? this.hardwareData : []) : hardware);
+    if(joints!==undefined)this.joints=copy(joints||[]);
+    const validParts=new Set(this.parts.map(part=>part.id));this.hiddenIds=new Set([...this.hiddenIds].filter(id=>validParts.has(id)));this.highlightIds=new Set([...this.highlightIds].filter(id=>validParts.has(id)));
     for (const instance of this.hardwareData) { if (!this.parts.some(part => part.id === instance.part_id)) continue; const object = hardwareObject(instance); if (object) { this.hardwareGroup.add(object); this.hardwareObjects.push(object); } }
     for (const part of this.parts) {
       const material = new THREE.MeshStandardMaterial({ color: part.id === this.selectedId ? '#dc9d6c' : '#c7ad83', roughness:.85, metalness:0 });
@@ -95,16 +160,18 @@ export class WorkshopViewport {
       this.inspection.partIds = new Set([...this.inspection.partIds].filter(id => this.parts.some(part => part.id === id)));
       if (!this.inspection.partIds.size) this.inspection = null;
     }
+    if(this.jointGroup)this.resolveJointInspection();
     this.updateHardwareLayout(); this.applyAppearance(); this.attachTransform(); this.clearMeasurement(); if ((wasEmpty || fit) && this.parts.length) this.setView('fit');
   }
-  setSelection(id, notify = false) { this.selectedId = id; this.applyAppearance(); this.attachTransform(); if (notify) this.callbacks.onSelect?.(id); }
+  setSelection(id, notify = false) { this.selectedId = this.parts.some(part=>part.id===id)?id:null;this.highlightIds=new Set(); this.applyAppearance(); this.attachTransform(); if (notify) this.callbacks.onSelect?.(this.selectedId); }
   attachTransform() { const mesh = this.meshes.find(item => item.userData.partId === this.selectedId && item.visible); if (mesh && ['translate','rotate','scale'].includes(this.mode)) { this.transform.attach(mesh); this.transform.setMode(this.mode); this.transform.setSpace('local'); } else this.transform.detach(); }
   setTool(mode) { if (['measure','translate','rotate','scale','mirror'].includes(mode)) this.clearInspection(); if (mode === 'mirror') { this.mirrorSelected(); return; } this.mode = mode; this.attachTransform(); this.clearMeasurement(); this.renderer.domElement.style.cursor = mode === 'measure' ? 'crosshair' : 'default'; }
   setVisible(id, visible) { visible ? this.hiddenIds.delete(id) : this.hiddenIds.add(id); const mesh = this.meshes.find(item => item.userData.partId === id); if (mesh) mesh.visible = visible; this.updateHardwareLayout(); this.attachTransform(); }
+  partAt(event){const rect=this.renderer.domElement.getBoundingClientRect();if(!rect.width||!rect.height)return null;this.pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);this.scene.updateMatrixWorld(true);this.raycaster.setFromCamera(this.pointer,this.camera);return this.raycaster.intersectObjects(this.meshes.filter(mesh=>mesh.visible),false)[0]||null;}
   pick(event) {
     const start = this.pointerStart; if (!start || start.button !== 0 || start.transform || Math.hypot(event.clientX-start.x,event.clientY-start.y)>4) return;
     if (!['select','measure'].includes(this.mode)) return;
-    const rect = this.renderer.domElement.getBoundingClientRect(); this.pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1); this.scene.updateMatrixWorld(true); this.raycaster.setFromCamera(this.pointer,this.camera);
+    this.partAt(event);
     const partHits = this.raycaster.intersectObjects(this.meshes.filter(mesh => mesh.visible),false), hit = partHits[0];
     // Measurement remains on woodworking surfaces, independent of the hardware layer.
     if (this.mode === 'measure') { if (hit) this.addMeasurePoint(hit.point); return; }
@@ -164,24 +231,28 @@ export class WorkshopViewport {
       const involved = this.inspection?.partIds.has(mesh.userData.partId);
       const faded = !!this.inspection && !involved;
       const transparent = !!this.inspection;
-      mesh.material.color.set(involved ? '#e8a06d' : faded ? '#bfc7c4' : mesh.userData.partId === this.selectedId ? '#dc9d6c' : '#c7ad83');
+      const highlighted=involved||this.highlightIds.has(mesh.userData.partId)||this.jointGroup?.partIds.has(mesh.userData.partId)||mesh.userData.partId===this.selectedId;
+      mesh.visible=!this.hiddenIds.has(mesh.userData.partId)&&(!this.inspection||involved);
+      mesh.material.color.set(this.palette?.wood||'#c7ad83');
       if (mesh.material.transparent !== transparent) { mesh.material.transparent = transparent; mesh.material.needsUpdate = true; }
-      mesh.material.opacity = faded ? .05 : involved ? (this.exploded ? .72 : .24) : 1;
+      mesh.material.opacity = involved ? .14 : 1;
       mesh.material.depthWrite = !transparent;
       for (const child of mesh.children) {
         if (!child.material) continue;
         if (child.userData.feature) {
           const emphasized = !!this.inspection?.featureIds.has(child.userData.feature) && involved;
-          child.material.color.set(emphasized ? '#db4e22' : '#44806d');
+          child.visible=emphasized||(!this.inspection&&!child.userData.drillAxis);
+          child.material.color.set(emphasized ? this.palette.accent : '#8d795d');
           if (!child.material.transparent) { child.material.transparent = true; child.material.needsUpdate = true; }
-          child.material.opacity = this.inspection ? (emphasized ? 1 : .16) : 1;
-          child.material.depthTest = !emphasized;
+          child.material.opacity = this.inspection ? (emphasized ? 1 : .16) : .6;
+          child.material.depthTest = true;
           child.renderOrder = emphasized ? 20 : 0;
-        } else child.material.opacity = faded ? .12 : .5;
+        } else {child.material.color.set(highlighted?this.palette.accent:this.palette.edge);child.material.opacity=highlighted?1:.45;}
       }
     }
     for (const object of this.hardwareObjects) {
       const involved = this.hardwareInInspection(object.userData.hardware), faded = !!this.inspection && !involved;
+      object.visible=this.hardwareVisible&&!this.hiddenIds.has(object.userData.hardware.part_id)&&(!this.inspection||involved)&&(!this.jointGroup||this.jointGroup.defined||!this.jointGroup.jointIds.has(object.userData.hardware.joint_id));
       object.traverse(child => { if (!child.material) return; const material = child.material;
         material.color.copy(child.userData.baseColor); if (involved && material.metalness > .5) material.color.set('#cc8042');
         if (material.transparent !== faded) { material.transparent = faded; material.needsUpdate = true; }
@@ -196,7 +267,8 @@ export class WorkshopViewport {
   setHardwareVisible(value) { this.hardwareVisible = !!value; this.updateHardwareLayout(); }
   setExploded(value) {
     this.exploded = !!value; this.clearMeasurement();
-    if (this.inspection) this.inspectConnection([...this.inspection.partIds], [...this.inspection.featureIds], this.inspection.jointId);
+    if(this.jointGroup){this.setJointGroup(this.jointGroup.source,{mode:value?'exploded':'whole',label:this.jointGroup.label,defined:this.jointGroup.defined});}
+    else if (this.inspection) this.inspectConnection([...this.inspection.partIds], [...this.inspection.featureIds], this.inspection.jointId);
     else { this.updateHardwareLayout(); this.applyAppearance(); }
   }
   addAssemblyGuide(from, to, color = 0x7c8b83) {
@@ -244,16 +316,23 @@ export class WorkshopViewport {
     if(!bolt&&involved.length>1){axis=new THREE.Vector3(...involved[1].position_mm).sub(new THREE.Vector3(...involved[0].position_mm));if(axis.lengthSq()<.001)axis.set(0,1,0);axis.normalize();}
     const ranked=[...involved].sort((a,b)=>new THREE.Vector3(...a.position_mm).dot(axis)-new THREE.Vector3(...b.position_mm).dot(axis));
     ranked.forEach((part,index)=>this.partDisplayOffsets.set(part.id,axis.clone().multiplyScalar((index-(ranked.length-1)/2)*90)));
+    if(this.exploded&&!this.inspection&&this.parts.length){
+      const center=this.parts.reduce((sum,part)=>sum.add(new THREE.Vector3(...part.position_mm)),new THREE.Vector3()).divideScalar(this.parts.length);
+      const extent=Math.max(...this.parts.flatMap(part=>part.size_mm),100);
+      this.parts.forEach((part,index)=>{const delta=new THREE.Vector3(...part.position_mm).sub(center);if(delta.length()<extent*.1)delta.set(0,extent*.2*(index%2?1:-1),0);this.partDisplayOffsets.set(part.id,delta.multiplyScalar(.65));});
+    }
     for(const mesh of this.meshes){
       const part=this.parts.find(item=>item.id===mesh.userData.partId);
       mesh.position.fromArray(part.position_mm).add(this.partDisplayOffsets.get(part.id)||new THREE.Vector3());
       mesh.updateWorldMatrix(true,true);
       if(!mesh.visible||!this.partDisplayOffsets.has(part.id))continue;
+      if(!this.inspection)continue;
       const anchors=(part.features||[]).filter(feature=>this.inspection.featureIds.has(feature.id)).map(feature=>feature.entry_mm?new THREE.Vector3(...feature.entry_mm):this.facePoint(part,feature.face,feature.u_mm,feature.v_mm,0));
       const local=anchors.length?anchors.reduce((sum,point)=>sum.add(point),new THREE.Vector3()).divideScalar(anchors.length):new THREE.Vector3();
       const shown=mesh.localToWorld(local),original=shown.clone().sub(this.partDisplayOffsets.get(part.id));
       this.addAssemblyGuide(original,shown,0xb27851);
-      this.addAssemblyLabel(part.name,shown,ranked.findIndex(item=>item.id===part.id));
+      // The adjacent review list names the parts. Do not cover a node close-up
+      // with large repeated sprites; only its true separation guides remain.
     }
   }
   updateHardwareLayout() {
@@ -263,7 +342,7 @@ export class WorkshopViewport {
       const instance = object.userData.hardware, axis = new THREE.Vector3(...instance.direction).normalize();
       const partOffset=this.partDisplayOffsets.get(instance.part_id)||new THREE.Vector3();
       object.position.fromArray(instance.position_mm).add(partOffset);
-      object.visible = this.hardwareVisible && !this.hiddenIds.has(instance.part_id);
+      object.visible = this.hardwareVisible && !this.hiddenIds.has(instance.part_id)&&(!this.inspection||this.hardwareInInspection(instance))&&(!this.jointGroup||this.jointGroup.defined||!this.jointGroup.jointIds.has(instance.joint_id));
       if (!object.visible || !this.exploded || (this.inspection && !this.hardwareInInspection(instance))) continue;
       const mounted=object.position.clone(),kind = instance.geometry.kind;
       let offset = kind === 'bolt' ? -(instance.geometry.length_mm + 25) : kind === 'hex_nut' ? 55 : kind === 'barrel_nut' ? -50 : -35;
@@ -279,6 +358,52 @@ export class WorkshopViewport {
       this.addAssemblyGuide(mounted,object.position.clone());
     }
   }
+  setJointGroup(group,{mode='whole',label='节点',joints,defined=true,onModeChange}={}) {
+    if(!group){this.clearInspection();return;}
+    if(joints!==undefined)this.joints=copy(joints||[]);
+    if(!['whole','local','exploded'].includes(mode))mode='whole';
+    const key=group.id||JSON.stringify(group.joint_ids||[]),previous=this.jointGroup;
+    const changed=previous?.key!==key||previous?.mode!==mode;
+    if(previous?.key!==key&&this.inspectionView){this.cancelCameraMotion();this.camera.position.fromArray(this.inspectionView.position);this.controls.target.fromArray(this.inspectionView.target);this.controls.update();this.inspectionView=null;}
+    if(mode!=='whole'&&!this.inspectionView)this.inspectionView=this.captureView();
+    this.jointGroup={key,source:copy(group),mode,label,defined:!!defined,onModeChange,
+      jointIds:new Set(group.joint_ids||[]),partIds:new Set(group.part_ids||[]),representativeId:previous?.key===key?previous.representativeId:null};
+    this.resolveJointInspection();this.exploded=mode==='exploded';this.mode='select';this.attachTransform();this.clearMeasurement();this.updateHardwareLayout();this.applyAppearance();
+    if(mode==='whole'&&this.inspectionView){const view=this.inspectionView;this.inspectionView=null;this.restoreView(view);}
+    else if(changed&&this.inspection)this.focusInspection();
+    this.rebuildJointIndex();
+  }
+  resolveJointInspection(){
+    const group=this.jointGroup;if(!group)return;
+    const joints=this.joints.filter(joint=>group.jointIds.has(joint.id));
+    group.partIds=new Set([...group.source.part_ids||[],...joints.flatMap(joint=>joint.part_ids||[])].filter(id=>this.parts.some(part=>part.id===id)));
+    if(!group.partIds.size){this.jointGroup=null;this.inspection=null;this.jointIndexLayer?.replaceChildren();return;}
+    group.featureIds=new Set(joints.flatMap(joint=>joint.feature_ids||[]));
+    if(group.mode==='whole'){this.inspection=null;return;}
+    let representative=joints.find(joint=>joint.id===group.representativeId);
+    if(!representative){
+      const distance=joint=>{const instances=this.hardwareData.filter(h=>h.joint_id===joint.id);return instances.length?Math.min(...instances.map(h=>new THREE.Vector3(...h.position_mm).distanceToSquared(this.camera.position))):Infinity;};
+      representative=[...joints].sort((a,b)=>distance(a)-distance(b))[0];
+    }
+    group.representativeId=representative?.id||null;
+    this.inspection={partIds:new Set(representative?.part_ids||[...group.partIds]),featureIds:group.defined?new Set(representative?.feature_ids||[]):new Set(),jointId:representative?.id||null};
+  }
+  rebuildJointIndex(){
+    this.jointIndexLayer.replaceChildren();const group=this.jointGroup;if(!group||group.mode!=='whole')return;
+    const button=document.createElement('button');button.type='button';button.className='model-joint-label';button.textContent=group.label+' · '+group.jointIds.size+' 处';button.setAttribute('aria-label','查看'+(group.source.name||'当前节点')+'局部');
+    button.addEventListener('click',()=>{if(group.onModeChange)group.onModeChange('local');else if(this.callbacks.onJointModeChange)this.callbacks.onJointModeChange('local');else this.setJointGroup(group.source,{mode:'local',label:group.label,defined:group.defined});});
+    this.jointIndexLayer.append(button);this.updateJointIndex();
+  }
+  updateJointIndex(){
+    const group=this.jointGroup,button=this.jointIndexLayer?.firstElementChild;if(!button||!group)return;
+    const candidates=[];
+    for(const mesh of this.meshes){if(!mesh.visible)continue;const part=this.parts.find(p=>p.id===mesh.userData.partId);mesh.updateWorldMatrix(true,false);
+      for(const feature of part.features||[]){if(!group.featureIds.has(feature.id))continue;const local=feature.entry_mm?new THREE.Vector3(...feature.entry_mm):this.facePoint(part,feature.face,feature.u_mm,feature.v_mm,0);candidates.push(mesh.localToWorld(local));}
+    }
+    const width=this.element.clientWidth,height=this.element.clientHeight;this.camera.updateMatrixWorld();let chosen=null;
+    for(const anchor of candidates){const vector=anchor.clone().sub(this.camera.position),distance=vector.length();this.raycaster.set(this.camera.position,vector.normalize());const hit=this.raycaster.intersectObjects(this.meshes.filter(mesh=>mesh.visible),false)[0];if(hit&&hit.distance<distance-1.5)continue;const point=anchor.clone().project(this.camera),x=(point.x+1)*width/2,y=(1-point.y)*height/2;if(point.z< -1||point.z>1||x<35||x>width-35||y<35||y>height-35)continue;chosen={x,y};break;}
+    button.hidden=!chosen;if(chosen){button.style.left=chosen.x+'px';button.style.top=chosen.y+'px';}
+  }
   inspectConnection(partIds = [], featureIds = [], jointId = null) {
     const ids = new Set(partIds.filter(id => this.parts.some(part => part.id === id)));
     if (!ids.size) { this.clearInspection(); return; }
@@ -286,6 +411,11 @@ export class WorkshopViewport {
     this.mode = 'select'; this.attachTransform(); this.clearMeasurement();
     this.renderer.domElement.style.cursor = 'default';
     this.updateHardwareLayout(); this.applyAppearance();
+    this.focusInspection();
+  }
+  focusInspection(){
+    if(!this.inspection)return;
+    const ids=this.inspection.partIds;
     const meshes = this.meshes.filter(mesh => mesh.visible && ids.has(mesh.userData.partId));
     if (!meshes.length) return;
     const bounds = new THREE.Box3(), features = new THREE.Box3();
@@ -307,7 +437,7 @@ export class WorkshopViewport {
     if (direction.lengthSq() < .1) direction.set(1,.8,1).normalize();
     this.moveCamera(center, center.clone().addScaledVector(direction, distance));
   }
-  clearInspection() { this.inspection = null; this.exploded = false; this.cancelCameraMotion(); this.updateHardwareLayout(); this.applyAppearance(); }
+  clearInspection() {const view=this.inspectionView;this.inspectionView=null;this.jointGroup=null; this.inspection = null; this.exploded = false;this.jointIndexLayer?.replaceChildren(); this.cancelCameraMotion(); this.updateHardwareLayout(); this.applyAppearance();if(view)this.restoreView(view); }
   cancelCameraMotion() {
     if (this.cameraMotion) this.controls.enableDamping = this.cameraMotion.damping;
     this.cameraMotion = null;
@@ -328,12 +458,25 @@ export class WorkshopViewport {
     this.camera.position.lerpVectors(motion.fromPosition, motion.position, eased);
     if (fraction === 1) this.cancelCameraMotion();
   }
-  focus(id) { this.cancelCameraMotion(); const mesh = this.meshes.find(item=>item.userData.partId===id); if (!mesh) return; this.setSelection(id); const box = new THREE.Box3().setFromObject(mesh); const center = box.getCenter(new THREE.Vector3()); const delta = this.camera.position.clone().sub(this.controls.target); this.controls.target.copy(center); this.camera.position.copy(center).add(delta); }
+  frameBounds(box,direction=null){
+    if(box.isEmpty())return;
+    const center=box.getCenter(new THREE.Vector3()),radius=Math.max(box.getSize(new THREE.Vector3()).length()/2,25),vertical=THREE.MathUtils.degToRad(this.camera.fov/2),halfFov=Math.min(vertical,Math.atan(Math.tan(vertical)*this.camera.aspect));
+    const distance=radius/Math.sin(halfFov)*1.08,dir=direction?new THREE.Vector3(...direction).normalize():this.camera.position.clone().sub(this.controls.target).normalize();
+    this.moveCamera(center,center.clone().addScaledVector(dir,distance));
+  }
+  focus(id=this.selectedId) { this.cancelCameraMotion(); const mesh = this.meshes.find(item=>item.userData.partId===id&&item.visible); if (!mesh) return; this.setSelection(id);this.frameBounds(new THREE.Box3().setFromObject(mesh)); }
   setView(view) {
     this.cancelCameraMotion();
-    const box = this.meshes.length ? new THREE.Box3().setFromObject(this.group) : new THREE.Box3(new THREE.Vector3(-250,0,-250),new THREE.Vector3(250,800,250));
-    const center = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()); const extent = Math.max(size.x,size.y,size.z,100); const distance = extent / (2*Math.tan(THREE.MathUtils.degToRad(this.camera.fov/2))) * 1.65;
-    const direction = ({front:[0,.02,1],right:[1,.02,0],top:[0,1,.001],iso:[1,.8,1],fit:[1,.8,1]})[view] || [1,.8,1]; this.controls.target.copy(center); this.camera.position.copy(center).add(new THREE.Vector3(...direction).normalize().multiplyScalar(distance)); this.controls.update();
+    const box=new THREE.Box3();for(const mesh of this.meshes)if(mesh.visible)box.union(new THREE.Box3().setFromObject(mesh));
+    if(box.isEmpty())box.set(new THREE.Vector3(-250,0,-250),new THREE.Vector3(250,800,250));
+    const direction = ({front:[0,.02,1],right:[1,.02,0],top:[0,1,.001],iso:[1,.7,1]})[view] || null;this.frameBounds(box,direction);
   }
-  dispose() { this.cancelCameraMotion(); this.renderer.setAnimationLoop(null); this.resizeObserver.disconnect(); this.controls.dispose(); this.transform.dispose(); this.release(this.group); this.release(this.hardwareGroup); this.release(this.hardwareGuides); this.renderer.dispose(); }
+  captureImage({view='iso',exploded=false}={}){
+    const original={view:this.captureView(),inspection:this.inspection,jointGroup:this.jointGroup,exploded:this.exploded,dimensionVisible:this.dimensionLines.visible,selected:this.selectedId,highlight:this.highlightIds};
+    this.cancelCameraMotion();
+    try{this.inspection=null;this.jointGroup=null;this.exploded=!!exploded;this.selectedId=null;this.highlightIds=new Set();this.dimensionLines.visible=false;this.updateHardwareLayout();this.applyAppearance();this.setView(view);
+      if(this.cameraMotion){this.camera.position.copy(this.cameraMotion.position);this.controls.target.copy(this.cameraMotion.target);this.cancelCameraMotion();}this.camera.lookAt(this.controls.target);this.camera.updateMatrixWorld();this.renderer.render(this.scene,this.camera);return this.renderer.domElement.toDataURL('image/png');
+    }finally{this.inspection=original.inspection;this.jointGroup=original.jointGroup;this.exploded=original.exploded;this.selectedId=original.selected;this.highlightIds=original.highlight;this.dimensionLines.visible=original.dimensionVisible;this.updateHardwareLayout();this.applyAppearance();this.camera.position.fromArray(original.view.position);this.controls.target.fromArray(original.view.target);this.controls.update();this.renderer.render(this.scene,this.camera);}
+  }
+  dispose() { this.cancelCameraMotion(); this.renderer.setAnimationLoop(null); this.resizeObserver.disconnect();this.themeObserver.disconnect();this.themeMedia.removeEventListener('change',this.themeListener); this.controls.dispose(); this.transform.dispose(); this.clearMeasurement();this.release(this.group); this.release(this.hardwareGroup); this.release(this.hardwareGuides);this.release(this.dimensionLines);this.release(this.grid);this.dimensionLayer.remove();this.jointIndexLayer.remove(); this.renderer.dispose();this.renderer.domElement.remove(); }
 }

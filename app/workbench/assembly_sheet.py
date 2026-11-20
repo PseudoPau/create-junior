@@ -129,7 +129,8 @@ def draw_assembly_sheets(project,hardware_instances):
     pages=max(1,ceil(len(parts)/6),ceil(len(hardware)/6),ceil(len(joints)/6));result=[]
     for page in range(pages):
         code='A-overview'+('' if page==0 else '-'+str(page+1));out=['<svg xmlns="http://www.w3.org/2000/svg" width="420mm" height="297mm" viewBox="0 0 420 297">','<defs><marker id="install-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="2.8" markerHeight="2.8" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="#111"/></marker></defs>','<style>text{font-family:Arial,"Microsoft YaHei",sans-serif;fill:#111}.halo{paint-order:stroke;stroke:#fff;stroke-width:2;stroke-linejoin:round}</style>','<rect width="420" height="297" fill="white"/>']
-        status='已确认' if project.get('revision') is not None and project.get('confirmed_revision')==project.get('revision') and project.get('acknowledged_limits') else '设计草稿'
+        status=('版本加工包' if project.get('export_revision') == project.get('revision') and project.get('revision') is not None
+                else '已确认' if project.get('revision') is not None and project.get('confirmed_revision')==project.get('revision') and project.get('acknowledged_limits') else '设计草稿')
         out += [text(12,17,'JUNIOR',6.5,attrs='font-weight="800"'),text(49,17,'开工总览',6,attrs='font-weight="700"'),text(408,16,'v'+str(project.get('revision','—'))+' · '+status+'  /  '+str(page+1)+'-'+str(pages),3.3,'end'),text(12,24,project.get('name','木作项目'),3.5),line(12,29,408,29,attrs='stroke="#111" stroke-width=".6"')]
         out.append(text(12,37,'01  认识零件',4.1,attrs='font-weight="700"'));out.append(_scene(parts,(22,43,61,62),labels=codes if len(parts)<=8 else None))
         out += [text(12,113,'P 板件 / H 五金',3.1),text(96,37,'下料 · 净料 X × Y × Z / mm',3.7,attrs='font-weight="700"')]

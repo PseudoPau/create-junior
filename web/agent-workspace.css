@@ -1,0 +1,56 @@
+/* A stable operation surface; the assembled model remains the working context. */
+.model-dimensions{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:9}
+.model-dimension{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;padding:5px 9px;background:#fffef4ed;border:1px solid #809c89;color:#315d4c;border-radius:5px;font:600 12px/1.2 system-ui;white-space:nowrap;box-shadow:0 2px 6px #243c2620}
+.model-dimension-editor{position:absolute;top:18%;left:50%;transform:translateX(-50%);z-index:15;max-width:min(360px,85%);padding:14px;background:white;border:1px solid #bccaba;border-radius:12px;box-shadow:0 8px 32px #28372820;display:grid;gap:9px}
+.model-dimension-editor input{font-size:24px;width:100%;padding:8px;border:1px solid #bbc9bd;border-radius:6px}
+.model-dimension-editor .entry-error{margin:0;line-height:1.5}
+.session-run-card{padding:12px 0;border-bottom:1px solid #e5e9df;margin-bottom:12px}
+.session-run-card p{font-size:13px;line-height:1.6;margin:7px 0;color:#667161}
+.session-run-card input{width:100%;padding:9px}
+.fit-evidence-row{display:grid;grid-template-columns:1fr auto;gap:5px;padding:10px 0;border-bottom:1px solid #e8ebe5}
+.fit-evidence-row small{grid-column:1;color:#70796d;line-height:1.5}
+.fit-evidence-row button{grid-column:2;grid-row:1/3}
+.fit-decision{padding:12px 0}.fit-decision h3{margin:6px 0}.fit-decision p{font-size:13px;line-height:1.6}
+.method-editor{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}.method-editor .entry-error,.method-editor>button{grid-column:1/-1}.method-editor input{width:100%}
+.method-connection{padding:10px 0;border-top:1px solid #e4e8e1}.method-connection p{font-size:12px;line-height:1.5;max-height:4.5em;overflow:auto}
+.candidate-actions small{max-width:65ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.package-actions a{padding:10px 14px;border:1px solid #d8dfd3;border-radius:8px;color:inherit;text-decoration:none}
+@media(min-width:601px){
+  /* One scroll owner avoids nested clipped scrolling layers over the WebGL canvas. */
+  body.bottom-surface-open #work-sidebar{max-height:none;min-height:0;overflow:visible;display:block}
+  body.bottom-surface-open #task-panel,body.bottom-surface-open #context-panel{max-height:none;overflow:visible}
+  body.bottom-surface-open .model-guide{display:none}
+  body.bottom-surface-open .command-bar{bottom:14px}
+  .module-page-heading h2{font-size:21px;margin:4px 0 10px}
+  .module-human-layout{min-height:0}.module-human-svg{max-height:220px}
+  .module-measurements{gap:8px}.module-measurement input{font-size:20px;padding:7px}
+  .anthropometry-card{padding:0}.posture-fieldset{margin:10px 0}
+  .candidate-actions{max-width:760px;padding:10px 14px}
+  #viewport{isolation:isolate}
+  #viewport>canvas{transform:translateZ(0);backface-visibility:hidden}
+  body.bottom-surface-open #work-sidebar{transform:translateX(-50%) translateZ(0);backface-visibility:hidden;isolation:isolate}
+}
+@media(min-width:601px) and (min-height:601px){
+  body.module-surface-open #work-sidebar{max-height:none}
+  body.module-surface-open .module-page{gap:6px}
+  body.module-surface-open .module-human-layout{grid-template-columns:112px minmax(0,1fr);gap:10px;padding:6px 10px}
+  body.module-surface-open .module-human-svg{width:96px;height:156px}
+  body.module-surface-open .module-measurements{gap:4px}
+  body.module-surface-open .module-measurement>small,.module-human-caption,.posture-hint{display:none}
+  body.module-surface-open .module-measurement input{height:28px;padding:3px 7px;font-size:16px}
+  body.module-surface-open .posture-fieldset{margin:2px 0}
+  body.module-surface-open .posture-choice{padding:5px 6px}
+  body.module-surface-open .module-page .anthropometry-card{gap:5px}
+  body.module-surface-open .module-page .anthropometry-card>.primary{min-height:32px;padding:5px}
+  body.module-surface-open .module-page-heading h2{font-size:18px;margin:0}
+  body.module-surface-open .module-page>button{padding:4px}
+  body.module-surface-open .anthropometry-card{grid-template-columns:minmax(0,1fr) 135px;align-items:center}
+  body.module-surface-open .anthropometry-card>.fit-card-heading{grid-column:1/-1}
+  body.module-surface-open .anthropometry-card>.module-human-layout{grid-column:1;grid-row:2}
+  body.module-surface-open .anthropometry-card>.posture-fieldset{grid-column:2;grid-row:2}
+  body.module-surface-open .module-page .posture-choices{grid-template-columns:1fr}
+  body.module-surface-open .anthropometry-card>.entry-error,body.module-surface-open .anthropometry-card>.primary{grid-column:1/-1}
+  body.module-surface-open .module-human-layout{grid-template-columns:78px minmax(0,1fr);padding:5px;gap:7px}
+  body.module-surface-open .module-human-svg{width:75px;height:145px}
+}
+@media(max-width:600px){.model-dimension{font-size:10px}.method-editor{grid-template-columns:1fr}}

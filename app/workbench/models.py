@@ -64,7 +64,7 @@ class Scale(Record):
 class Requirements(Record):
     body_height_mm: float | None = Field(default=None, gt=0, le=2500)
     load_kg: float | None = Field(default=None, gt=0, le=500)
-    environment: str = ""
+    environment: str = "indoor"
     tools: list[str] = Field(default_factory=list)
     notes: str = Field(default="", max_length=4000)
 
@@ -89,6 +89,25 @@ class ModuleConstraint(Record):
                 raise ValueError("范围约束需要有效的 min_mm 和 max_mm")
         return self
 
+class FitSuggestion(Record):
+    key: Literal["seat_height_mm", "seat_width_mm", "seat_depth_mm", "back_angle_deg", "seat_tilt_deg", "seat_back_angle_deg"]
+    value: float = Field(ge=-180, le=2000)
+    reason: str = Field(min_length=1, max_length=1000)
+    source_ids: list[str] = Field(default_factory=list, max_length=50)
+    anthropometry: dict[str, float | str | None] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def dimension_range(self):
+        if self.key.endswith('_mm') and self.value <= 0:
+            raise ValueError('长度建议必须大于零')
+        if self.key == 'seat_back_angle_deg' and not 0 < self.value < 180:
+            raise ValueError('座背夹角必须在 0 到 180 度之间')
+        if self.key == 'back_angle_deg' and not 0 <= self.value <= 90:
+            raise ValueError('旧版靠背后倾角必须在 0 到 90 度之间')
+        if self.key == 'seat_tilt_deg' and not -90 < self.value < 90:
+            raise ValueError('座面倾角必须在 -90 到 90 度之间')
+        return self
+
 class Module(Record):
     id: str = Field(min_length=1, max_length=80, pattern=r"^[a-zA-Z0-9_-]+$")
     kind: Literal["support", "reach", "clearance", "storage", "surface", "base"]
@@ -99,6 +118,8 @@ class Module(Record):
     anthropometry: dict[str, float | str | None] = Field(default_factory=dict)
     target: dict[str, float | str | None] = Field(default_factory=dict)
     confirmations: dict[str, bool] = Field(default_factory=dict)
+    decisions: dict[str, Literal["keep", "adopt", "custom"]] = Field(default_factory=dict)
+    suggestions: list[FitSuggestion] = Field(default_factory=list, max_length=5)
     constraints: list[ModuleConstraint] = Field(default_factory=list, max_length=50)
     source_ids: list[str] = Field(default_factory=list, max_length=50)
     status: Literal["inferred", "target", "confirmed", "conflict", "needs_review"] = "inferred"
@@ -219,6 +240,39 @@ class Joint(Record):
     assembly_note: str = ""
     confirmed: bool = False
 
+class Preservation(Record):
+    """Design-specific constraints; inferred limits are never verified by an AI import."""
+    status: Literal["unknown", "inferred", "verified"] = "unknown"
+    source_ids: list[str] = Field(default_factory=list, max_length=50)
+    features: list[str] = Field(default_factory=list, max_length=20)
+    adjustable_keys: list[str] = Field(default_factory=list, max_length=20)
+    limits: list[ModuleConstraint] = Field(default_factory=list, max_length=20)
+    note: str = Field(default="", max_length=2000)
+
+class BodyProfile(Record):
+    height_mm: float = Field(gt=0, le=2500)
+    sitting_height_mm: float = Field(gt=0, le=1500)
+    hip_width_mm: float = Field(gt=0, le=1000)
+    posture: Literal["upright", "reclined", "leaning", "cross_legged"]
+    updated_at: str = Field(default_factory=now)
+
+    @model_validator(mode="after")
+    def body_measurements(self):
+        if self.sitting_height_mm >= self.height_mm:
+            raise ValueError("坐高是坐面到头顶的距离，应小于站立身高。")
+        return self
+
+class ReviewConfirmation(Record):
+    fingerprint: str = Field(min_length=1, max_length=128)
+    revision: int = Field(ge=1)
+    decision: Literal['keep', 'adopt', 'custom'] = 'keep'
+
+
+class ReviewState(Record):
+    version: Literal[1] = 1
+    confirmations: dict[str, ReviewConfirmation] = Field(default_factory=dict)
+
+
 class Project(Record):
     id: str = Field(default_factory=lambda: str(uuid4()))
     name: str = Field(default="我的木椅", min_length=1, max_length=120)
@@ -229,7 +283,12 @@ class Project(Record):
     references: list[Reference] = Field(default_factory=list, max_length=20)
     evidence: list[Evidence] = Field(default_factory=list, max_length=200)
     assumptions: list[str] = Field(default_factory=list, max_length=100)
-    fabrication_mode: Literal["self", "shop"] | None = None
+    fabrication_mode: Literal["self", "shop"] | None = "shop"
+    baseline_revision: int | None = Field(default=None, ge=1)
+    preservation: Preservation = Field(default_factory=Preservation)
+    design_intent: Literal["restoration", "redesign"] = "restoration"
+    profile_snapshot: BodyProfile | None = None
+    review_state: ReviewState | None = None
     scale: Scale | None = None
     requirements: Requirements = Field(default_factory=Requirements)
     modules: list[Module] = Field(default_factory=list, max_length=50)
@@ -275,5 +334,6 @@ class Restore(Record):
 
 EDITABLE_FIELDS = {
     "name", "scope", "scope_reason", "evidence", "assumptions",
-    "fabrication_mode", "scale", "requirements", "modules", "materials", "parts", "joints"
+    "fabrication_mode", "scale", "requirements", "modules", "materials", "parts", "joints",
+    "preservation", "design_intent"
 }

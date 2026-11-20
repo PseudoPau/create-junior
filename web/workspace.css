@@ -23,7 +23,7 @@
   .sidebar-collapsed .work-sidebar { display:none; }
   .sidebar-header { position:relative; z-index:11; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; min-height:48px; padding:8px 14px; border-bottom:1px solid var(--line); }
   .sidebar-header>strong { font-size:12px; font-weight:650; }
-  #sidebar-canvas { display:none; }
+  #sidebar-canvas { display:block; padding:5px 9px; color:var(--green); font-size:11px; }
   .task-panel.has-design>.panel-heading { display:none; }
   .sidebar-library summary { cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:7px; color:var(--muted); font-size:11px; }
   .sidebar-library summary::-webkit-details-marker { display:none; }
@@ -193,6 +193,17 @@
   .command-bar input { font-size:12px; }
   .connection-kit { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* A visible task surface always needs an explicit way back to the model. */
+.sidebar-header #sidebar-canvas {display:block;flex-shrink:0;}
+.sidebar-collapsed .canvas-panel>.model-guide:not(.hidden) ~ .command-bar {display:none;}
+
+/* Keep the desktop task surface singular even when the compact project switcher breakpoint matches. */
+@media screen and (min-width:901px) and (min-height:601px) {
+  .work-sidebar .compact-projects,
+  .work-sidebar .sidebar-library {display:none !important;}
+  .work-sidebar {display:flex;}
+}
 @media screen and (max-height:450px) {
   :root { --workspace-top:44px; }
   .brand small,.project-heading span { display:none; }
@@ -204,6 +215,28 @@
 }
 @media screen and (max-height:450px) and (min-width:650px) {
   .view-controls { top:32px; }
+}
+
+/* Model-first desktop workspace: one bottom task surface, no permanent side columns. */
+@media screen and (min-width:901px) and (min-height:601px) {
+  .workspace { display:block; position:relative; height:calc(100dvh - var(--workspace-top) - 42px); min-height:0; }
+  .canvas-panel { position:absolute; inset:0; display:block; width:100%; height:100%; overflow:hidden; }
+  .canvas-panel>.viewport { position:absolute; inset:0; z-index:0; }
+  .canvas-panel>.canvas-heading,.canvas-panel>.viewport-toolbar,.canvas-panel>.view-controls,.canvas-panel>.empty-canvas,.canvas-panel>.measure-result,.canvas-panel>.viewport-error { z-index:2; }
+  .canvas-panel>.canvas-footer { position:absolute; left:0; right:0; bottom:0; z-index:2; min-height:25px; background:#f5f6f2bb; }
+  .canvas-panel>.candidate-actions { position:absolute; left:50%; bottom:82px; z-index:8; width:min(680px,calc(100% - 32px)); transform:translateX(-50%); margin:0; }
+  .canvas-panel>.model-guide { position:absolute; left:50%; bottom:82px; z-index:7; width:min(560px,calc(100% - 32px)); transform:translateX(-50%); margin:0; }
+  .canvas-panel>.conversation-panel { position:absolute; left:50%; bottom:82px; z-index:8; width:min(620px,calc(100% - 32px)); max-height:min(48dvh,420px); transform:translateX(-50%); margin:0; }
+  .canvas-panel>.command-bar { position:absolute; left:50%; bottom:18px; z-index:9; width:min(620px,calc(100% - 32px)); transform:translateX(-50%); height:52px; border:1px solid #d9e0d5; border-radius:14px; box-shadow:0 5px 22px #27332312; }
+  .work-sidebar { position:absolute; left:50%; bottom:82px; z-index:20; width:min(620px,calc(100% - 32px)); max-height:min(68dvh,640px); transform:translateX(-50%); display:flex; border:1px solid #d9e0d5; border-radius:16px; box-shadow:0 12px 38px #27332320; }
+  .work-sidebar .sidebar-header { min-height:42px; padding:7px 12px; background:#fff; }
+  .work-sidebar .compact-projects,.work-sidebar .sidebar-library { display:none; }
+  .work-sidebar .task-panel,.work-sidebar .context-panel { max-height:calc(min(68dvh,640px) - 42px); padding:14px 16px 18px; }
+  .work-sidebar .task-panel { width:100%; }
+  .work-sidebar .context-panel { width:100%; }
+  body:not(.sidebar-collapsed) .canvas-panel>.model-guide { display:none; }
+  body:not(.sidebar-collapsed) .canvas-panel>.command-bar { display:none; }
+  .awaiting-model .canvas-panel>.empty-canvas { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; }
 }
 
 @media screen {

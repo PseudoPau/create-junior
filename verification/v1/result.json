@@ -1,0 +1,30 @@
+{
+  "project_id": "1431513a-510e-4885-8b02-7460a0a68aee",
+  "export_revision": 19,
+  "page_errors": [],
+  "http_failures": [],
+  "archive_files": [
+    "model/design.json",
+    "package.json",
+    "drawings.pdf",
+    "print.html",
+    "cut-list.csv",
+    "purchase.csv",
+    "hardware.csv",
+    "assembly.txt",
+    "views/assembled.png",
+    "views/exploded.png",
+    "drawings/001.svg",
+    "drawings/002.svg",
+    "drawings/003.svg",
+    "drawings/004.svg",
+    "drawings/005.svg",
+    "drawings/006.svg",
+    "drawings/007.svg",
+    "drawings/008.svg",
+    "drawings/009.svg",
+    "drawings/010.svg",
+    "drawings/011.svg",
+    "README.txt"
+  ]
+}

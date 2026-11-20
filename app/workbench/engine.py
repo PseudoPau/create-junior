@@ -259,8 +259,7 @@ def build_checks(project: Any) -> list[dict]:
     if project.get("fabrication_mode") not in ("self", "shop"):
         add("fabrication_mode_missing", "请确认自行加工或加工店制件后装配。")
     requirements = project.get("requirements") or {}
-    if not _number(requirements.get("load_kg"), True):
-        add("load_missing", "请填写使用者预计载荷，用于记录使用条件；这不构成承重认证。")
+    # A load entry is an optional use condition, not evidence of validated strength.
     parts = project.get("parts", [])
     if not parts:
         add("parts_missing", "尚无已采用的零件设计。")
@@ -444,14 +443,21 @@ def draw_part_svg(part: Any) -> str:
 def build_package(project: Any) -> dict:
     project = _data(project)
     checks = build_checks(project)
+    # The new review gate applies to publication, not geometric AI repair loops.
+    from app.workbench.review import review_blockers
+    from app.workbench.models import Project
+    # export_revision is drawing context, not a persisted design field.
+    review_document = {key: value for key, value in project.items() if key != 'export_revision'}
+    workflow_blockers = review_blockers(Project.model_validate(review_document)) if project.get('review_state') else []
     from app.workbench.compact_drawings import draw_part_sheets, draw_joint_sheets
     from app.workbench.assembly_sheet import draw_assembly_sheets
+    from app.workbench.review_groups import board_dimensions
     instances = resolve_hardware(project)
     drawing_sheets = draw_assembly_sheets(project, instances)
     drawing_sheets.extend(sheet for part in project.get("parts", []) for sheet in draw_part_sheets(part, project))
     drawing_sheets.extend(draw_joint_sheets(project, instances))
     ready = (
-        not any(c["severity"] == "blocker" for c in checks)
+        not any(c["severity"] == "blocker" for c in checks) and not workflow_blockers
         and project.get("confirmed_revision") is not None
         and project.get("confirmed_revision") == project.get("revision")
         and project.get("acknowledged_limits") is True
@@ -476,12 +482,14 @@ def build_package(project: Any) -> dict:
         "project_id": str(project.get("id", "")), "revision": project.get("revision"),
         "status": "ready" if ready else "draft",
         "fabrication_mode": project.get("fabrication_mode"), "checks": checks,
+        "review_blockers": workflow_blockers,
         "parts": deepcopy(parts), "joints": deepcopy(project.get("joints", [])),
         "materials": deepcopy(materials),
         "modules": deepcopy(project.get("modules", [])),
         "cut_list": [{
             "part_id": p.get("id"), "name": p.get("name"), "quantity": 1,
             "stock_size_mm": deepcopy(p.get("size_mm")),
+            "stock_dimensions_mm": board_dimensions(p),
             "material_id": p.get("material_id"),
             "material_name": (materials.get(p.get("material_id")) or {}).get("name"),
             "grain_axis": (materials.get(p.get("material_id")) or {}).get("grain_axis"),

@@ -1,4 +1,26 @@
 /* R1 product surfaces share the existing project and design state. */
+.package-visual-story{margin:24px 0;background:#f1f3ed;border:1px solid #dce3d6;border-radius:18px;overflow:hidden}
+.package-visual-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 24px 0}
+.package-visual-heading h2{font-size:22px;margin:6px 0 0}
+.package-visual-tabs{display:flex;gap:4px;background:#fff;padding:4px;border-radius:10px;flex-shrink:0}
+.package-visual-tabs button{border:0;background:transparent;color:#64735f;padding:9px 16px;font-size:12px;border-radius:7px}
+.package-visual-tabs button.active{background:#304f40;color:#fff}
+.package-visual-stage{min-height:300px;display:grid;place-items:center}
+.package-visual-stage img{display:block;width:100%;height:min(48vw,490px);object-fit:contain}
+.package-visual-caption{display:flex;justify-content:space-between;gap:16px;padding:0 24px 16px;margin:0;color:#63715e;font-size:12px;line-height:1.6}
+.package-visual-caption a{color:#315d4c;white-space:nowrap;text-underline-offset:3px}
+.package-part-legend{display:flex;flex-wrap:wrap;gap:8px;padding:0 24px 22px}
+.package-part-legend[hidden]{display:none}
+.package-part-legend>span{display:flex;align-items:center;gap:8px;background:#fff;border-radius:6px;padding:7px 10px;font-size:11px}
+.package-part-legend b{color:#315d4c;font-size:10px}
+.package-module-summary>summary{cursor:pointer;font-size:13px;font-weight:600;color:#3a5744}
+.package-chapter>summary{display:grid;grid-template-columns:150px 1fr auto;align-items:center;gap:14px;cursor:pointer;list-style:none;padding:2px 0}
+.package-chapter>summary::-webkit-details-marker{display:none}
+.package-chapter>summary>span:first-child{font-size:11px;color:#6c7a65}
+.package-chapter>summary>strong{font-size:20px}
+.chapter-toggle{font-size:24px;font-weight:300;color:#6c7a65}
+.package-chapter[open]>summary>.chapter-toggle{transform:rotate(45deg)}
+@media(max-width:760px){.package-visual-heading{padding:18px 16px 0;align-items:flex-start;flex-direction:column}.package-visual-heading h2{font-size:19px}.package-visual-stage img{height:320px}.package-visual-caption{padding:0 16px 16px;font-size:11px}.package-part-legend{padding:0 16px 18px}.package-chapter>summary{grid-template-columns:1fr auto;gap:6px}.package-chapter>summary>span:first-child{grid-column:1/-1}.package-chapter>summary>strong{font-size:18px}}
 @media screen {
   .more-menu {position:relative;z-index:30;}
   .more-menu summary {list-style:none;cursor:pointer;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--muted);font-size:11px;}

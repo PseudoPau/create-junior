@@ -1,0 +1,52 @@
+/* Review is an action sequence, with diagnostic text behind one disclosure. */
+.review-flow {display:grid;gap:10px;color:var(--ink);min-width:0;}
+.review-flow-heading {display:grid;gap:5px;}
+.review-flow-heading-line {display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:10px;color:var(--muted);}
+.review-flow-heading h2 {margin:0;font-size:21px;line-height:1.35;}
+.review-flow-heading>p {margin:0;font-size:11px;color:var(--muted);}
+.review-flow-card {display:grid;gap:9px;padding:13px;border:1px solid #e6d4bc;border-radius:13px;background:#fffaf3;}
+.review-flow-card-top {display:flex;justify-content:space-between;gap:12px;color:#87775e;font-size:10px;}
+.review-flow-card h3 {margin:0;font-size:18px;line-height:1.4;}
+.review-flow .review-flow-affected {margin:0;font-size:11px;color:var(--muted);line-height:1.55;}
+.review-flow .review-flow-description {margin:0;color:var(--ink);font-size:13px;line-height:1.8;overflow-wrap:anywhere;}
+.review-flow .review-flow-next-note {margin:0;color:var(--muted);font-size:11px;line-height:1.6;}
+.review-flow-actions {display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.review-flow-actions>.primary {flex:1;margin:0;min-width:160px;}
+.review-flow .review-flow-primary {min-height:40px;font-size:13px;width:100%;margin-top:0;}
+.review-flow .review-flow-link {font-size:11px;padding:7px 9px;}
+.review-flow-connection {display:grid;gap:12px;align-items:center;min-width:0;}
+.review-flow-connection.has-drawing {grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+.review-flow-connection-copy {display:grid;gap:9px;min-width:0;}
+.review-flow-drawing {display:block;width:100%;height:146px;object-fit:contain;border:1px solid #e8e4d9;border-radius:8px;background:#fff;}
+.review-flow-hardware {display:grid;gap:6px;font-size:11px;}
+.review-flow-hardware>div {display:flex;justify-content:space-between;gap:10px;padding-bottom:5px;border-bottom:1px solid #ece7dd;}
+.review-flow-hardware strong {flex-shrink:0;}
+.review-flow-hardware-more {font-size:10px;color:var(--muted);}
+.review-flow-assembly {border-top:1px solid #ece7dd;padding-top:7px;}
+.review-flow-assembly summary {font-size:11px;color:var(--green);cursor:pointer;}
+.review-flow-assembly p {font-size:12px!important;line-height:1.75;margin:8px 0 0!important;overflow-wrap:anywhere;}
+.review-flow-assembly ul {font-size:11px;line-height:1.7;margin:8px 0 0;padding-left:18px;color:var(--muted);}
+.review-flow-footer {display:grid;gap:6px;position:sticky;bottom:0;z-index:3;background:#fff;padding:10px 0 2px;border-top:1px solid var(--line);box-shadow:0 -8px 12px #fff;}
+.review-flow-ready {display:grid;gap:8px;padding:20px 16px;border-radius:13px;background:#f0f5eb;text-align:center;}
+.review-flow-ready-mark {display:grid;place-items:center;margin:auto;width:32px;height:32px;border-radius:50%;background:#dce8d5;color:var(--green);font-size:19px;}
+.review-flow-ready h3 {font-size:17px;margin:0;}
+.review-flow-ready>p {margin:0;font-size:12px;color:var(--muted);}
+.review-flow-output {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px;}
+.review-flow-output>div {display:grid;gap:2px;}
+.review-flow-output strong {font-size:24px;color:var(--green);}
+.review-flow-output span {font-size:11px;color:var(--muted);}
+.review-flow .review-flow-scope-note {font-size:11px;line-height:1.7;margin:0;color:var(--muted);}
+.review-flow-details {border-top:1px solid var(--line);padding-top:10px;}
+.review-flow-details>summary {cursor:pointer;font-size:11px;color:var(--green);}
+.review-flow-details h4 {font-size:12px;margin:14px 0 6px;}
+.review-flow-details ul {padding-left:18px;margin:0;color:var(--muted);font-size:11px;line-height:1.7;}
+.review-flow-details li {margin:5px 0;overflow-wrap:anywhere;}
+.review-flow .review-flow-error {margin:0;color:#a14930;font-size:12px;line-height:1.6;}
+.review-flow-error:empty {display:none;}
+@media(max-width:600px){
+  .review-flow-card {padding:13px;}
+  .review-flow-connection.has-drawing {grid-template-columns:1fr;}
+  .review-flow-drawing {height:140px;}
+  .review-flow-actions {align-items:stretch;}
+  .review-flow-actions>.primary {flex-basis:100%;order:2;}
+}

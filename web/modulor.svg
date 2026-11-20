@@ -1,0 +1,22 @@
+<svg class="person" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 260" role="img" aria-label="以身体为尺度：抬臂站姿标注身高，坐姿标注坐高与臀宽">
+  <g fill="none" stroke="currentColor" stroke-width=".8" opacity=".22">
+    <path d="M24 239H248M49 62H128M49 136H128M49 195H128M49 239V62M128 239V28"/>
+    <path d="M155 202H241M156 131H241M241 202V131"/>
+  </g>
+  <g fill="currentColor">
+    <ellipse cx="91" cy="77" rx="10" ry="13"/>
+    <path d="M85 90L84 96Q73 99 70 111L62 143L57 173Q56 179 60 180Q64 181 66 174L72 146L79 123L78 162L81 181L75 211L73 234L67 237Q65 241 76 240L82 239L85 213L93 188L98 211L105 237L117 240Q121 239 117 235L111 233L108 208L101 178L104 151L104 119L114 103Q122 90 123 75L124 49L128 32Q129 27 126 26Q123 25 121 31L117 48L115 74Q113 87 103 95L98 92L98 89Z"/>
+    <ellipse cx="181" cy="144" rx="8" ry="10"/>
+    <path d="M177 155Q168 159 170 171L171 192Q172 200 181 202L207 204L209 232L223 233Q227 231 221 229L216 228L215 202Q215 195 207 195L188 191L186 169L194 182L211 185Q216 183 211 180L199 177L188 158Z"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".55">
+    <path d="M171 205H209M172 205V238M207 205V238M167 175V205"/>
+    <path d="M43 64V239M39 64H47M39 239H47M238 133V202M234 133H242M234 202H242"/>
+    <path d="M77 164V190M104 164V190M77 187H104M77 183V191M104 183V191M105 187H134"/>
+  </g>
+  <g class="body-figure-labels" fill="currentColor" font-family="Segoe UI,Microsoft YaHei,sans-serif" font-size="13">
+    <text x="20" y="150" text-anchor="middle" transform="rotate(-90 20 150)">身高</text>
+    <text x="256" y="171" text-anchor="middle" transform="rotate(-90 256 171)">坐高</text>
+    <text x="137" y="191">臀宽</text>
+  </g>
+</svg>

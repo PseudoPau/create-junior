@@ -1,5 +1,15 @@
 # 架构与 AI 边界
 
+## 当前会话 Agent 实现
+
+`DesignRuns` 保存任务状态、工作者租约和有限修正记录；`reference_context` 提供真实网页、图片和 PDF 选页；会话通过 `scripts/session_agent.py` 调用领取、读取、预览和返回工具。网页提交任务后明确等待会话，不宣称后台正在自动建模。
+
+`Project` 是采用后的设计事实源，`DesignProposal` 是待采用修改，`DesignRun` 是过程记录。原版由 `baseline_revision` 指向不可变历史。几何修改经过统一候选校验和乐观锁，无法通过 AI 写入已验证的保型声明。纯适己建议保存在任务中，用户选择时才随实际修改写入项目。
+
+人体档案独立保存，并在项目中保留快照。三项身体数据和姿态用于 AI 建议，不作为通用 CAD 比例求解器。模型标注与适己选择共用尺寸预览；六板结构的几何、孔位和连接联动由领域实现负责，其他结构需要 Agent 提交完整关联修改。
+
+`exports` 在锁内捕获单一项目版本，再派生 ZIP/PDF 和清单；写入完成后才发布 manifest。历史导出不可变，导入模型总是创建新项目。详细当前边界见 [实施记录](session-agent-iteration.md)。
+
 ## 分层
 
 ```text
@@ -39,7 +49,7 @@ Module
 └─ affected_part_ids：由它驱动或需要复核的部件
 ```
 
-数据流为 `参考/意图 → ModuleDraft → 用户确认 → DesignProposal(modules + parts) → 确定性检查 → 图纸与制作包`。用户修改 Module 时，提案同时更新受影响部件、孔位和连接，并使旧资料失效；用户直接修改部件时，相关 Module 进入 `needs_review`，避免双向静默覆盖。
+数据流为 `参考/意图 → ModuleDraft → 用户确认 → DesignProposal(modules + parts) → 确定性检查 → 图纸与加工包`。用户修改 Module 时，提案同时更新受影响部件、孔位和连接，并使旧资料失效；用户直接修改部件时，相关 Module 进入 `needs_review`，避免双向静默覆盖。
 
 首个 Module 只实现 CAFE CHAIR 的“坐姿支撑”，沿用现有 PUT 和 Proposal API，不急着新增 `/modules` 接口。第一阶段可先存储模块目标、关联部件和约束摘要，再逐步把公式与求解放入确定性规则层。AI 负责从参考和自然语言提取模块假设、追问和提出修改；规则层负责单位、约束、几何、版本和资料一致性。
 

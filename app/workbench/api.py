@@ -19,6 +19,7 @@ from app.workbench.reference_links import read_reference_link, ReferenceReadErro
 from app.workbench.proposals import ImportProposal, build_proposal
 from app.workbench.engine import build_checks, build_package, check_coverage
 from app.workbench.commands import Interaction, dimension_command, interaction_record, append_record, mark_accepted, mark_proposal_records, history
+from app.workbench.module_fit import FitRequest, RevisionRequest, fit_preview
 
 router = APIRouter(prefix="/api/workbench")
 workbench_store = WorkbenchStore()
@@ -62,6 +63,47 @@ def get_project(project_id: UUID):
 def update_project(project_id: UUID, body: UpdateProject):
     checked_patch(body.patch)
     return change(project_id, body.expected_revision, body.patch)
+
+
+def guarded_fit(project_id: UUID, module_id: str, body: FitRequest):
+    project = load(project_id)
+    if project.revision != body.expected_revision:
+        raise HTTPException(409, "项目已被修改，请刷新后再提交")
+    try:
+        return fit_preview(project, module_id, body.key, body.value)
+    except (ValidationError, ValueError) as exc:
+        raise HTTPException(422, str(exc))
+
+
+@router.post("/projects/{project_id}/modules/{module_id}/fit-preview")
+def preview_module_fit(project_id: UUID, module_id: str, body: FitRequest):
+    with workbench_store.lock:
+        return guarded_fit(project_id, module_id, body)
+
+
+@router.post("/projects/{project_id}/modules/{module_id}/fit-apply", response_model=Project)
+def apply_module_fit(project_id: UUID, module_id: str, body: FitRequest):
+    with workbench_store.lock:
+        result = guarded_fit(project_id, module_id, body)
+        return change(project_id, body.expected_revision, result['patch'])
+
+
+@router.post("/projects/{project_id}/joints/{joint_id}/accept", response_model=Project)
+def accept_joint(project_id: UUID, joint_id: str, body: RevisionRequest):
+    with workbench_store.lock:
+        project = load(project_id)
+        if project.revision != body.expected_revision:
+            raise HTTPException(409, "项目已被修改，请刷新后再提交")
+        joint = next((item for item in project.joints if item.id == joint_id), None)
+        if joint is None:
+            raise HTTPException(404, "找不到这个连接")
+        ids = set(joint.part_ids)
+        failures = [issue for issue in build_checks(project.model_dump(mode='json'))
+                    if issue['severity'] == 'blocker' and issue['code'] != 'joint_unconfirmed'
+                    and (not issue.get('part_ids') or ids.intersection(issue['part_ids']))]
+        if failures:
+            raise HTTPException(422, '此连接还不能采用：' + '；'.join(issue['message'] for issue in failures[:3]))
+        return change(project_id, body.expected_revision, {}, accepted_joint_ids={joint_id})
 
 @router.post("/projects/{project_id}/references/item", response_model=Project)
 def add_reference_item(project_id: UUID, body: ReferenceInput):
@@ -265,6 +307,8 @@ def dismiss(project_id: UUID, body: AcceptProposal):
         proposal.update(status="cancelled", cancelled_at=proposal.get("cancelled_at") or now())
         workbench_store.save_proposal(str(project_id), proposal)
         mark_proposal_records(workbench_store, project_id, proposal["id"], status="cancelled")
+        from app.workbench.design_runs import DesignRuns
+        DesignRuns(workbench_store).mark_result(str(project_id), proposal['id'], status='dismissed')
         if proposal.get("request_id"):
             directory = workbench_store.directory(project_id) / "preparation"
             request_path = directory / "requests" / (str(UUID(proposal["request_id"])) + ".json")
@@ -297,13 +341,25 @@ def accept(project_id: UUID, body: AcceptProposal):
             raise HTTPException(409, "候选基于旧版本，请重新生成")
         checked_patch(proposal["patch"])
         accepted_ids = None
-        if body.accept_connections:
-            if proposal.get("purpose") != "manufacturing":
-                raise HTTPException(422, "只有加工方案可以整体接受连接设定")
+        if project.review_state is None and (body.accept_connections or not project.parts):
             candidate = Project.model_validate({**project.model_dump(mode="json"), **proposal["patch"]})
-            accepted_ids = {joint.id for joint in candidate.joints}
+            checks = build_checks(candidate.model_dump(mode="json"))
+            # Continue adopts concrete default methods, not unknown or invalid joints.
+            # Geometry remains independently checked for every preview and export.
+            accepted_ids = {
+                joint.id for joint in candidate.joints
+                if joint.kind in {"screw", "dowel"} and joint.assembly_note.strip()
+                and joint.feature_ids and joint.hardware
+                and not any(issue['severity'] == 'blocker'
+                            and issue['code'] != 'joint_unconfirmed'
+                            and set(issue.get('part_ids', [])).intersection(joint.part_ids)
+                            for issue in checks)
+            }
         updated = change(project_id, body.expected_revision, proposal["patch"],
                          accepted_joint_ids=accepted_ids)
+        from app.workbench.design_runs import DesignRuns
+        DesignRuns(workbench_store).mark_result(str(project_id), proposal['id'],
+                                              status='completed', result_revision=updated.revision)
         mark_accepted(workbench_store, project_id, proposal, updated.revision)
         request_path = workbench_store.directory(project_id) / "preparation" / "request.json"
         if request_path.exists():
@@ -328,12 +384,6 @@ def preparation_conditions(project: Project) -> tuple[dict, list[dict]]:
         questions.append({"key": "fabrication_mode", "label": "这次由谁加工零件？", "kind": "select",
                           "options": [{"value": "self", "label": "我自己加工"},
                                       {"value": "shop", "label": "加工店制件，我来装配"}]})
-    if project.requirements.load_kg is None:
-        questions.append({"key": "load_kg", "label": "希望按多少千克的使用载荷考虑？", "kind": "number"})
-    if not project.requirements.environment.strip():
-        questions.append({"key": "environment", "label": "主要在哪里使用？", "kind": "select",
-                          "options": [{"value": "indoor", "label": "室内"},
-                                      {"value": "outdoor", "label": "室外"}]})
     return conditions, questions
 
 
@@ -489,6 +539,8 @@ def confirm(project_id: UUID, body: ConfirmProject):
             raise HTTPException(409, "项目已变化，请刷新后核对")
         issues = build_checks(project.model_dump(mode="json"))
         blockers = [issue for issue in issues if issue["severity"] == "blocker"]
+        from app.workbench.review import review_blockers
+        blockers.extend(review_blockers(project))
         if blockers:
             raise HTTPException(409, {"message": "请先解决阻塞问题", "checks": blockers})
         if not body.acknowledged_limits:

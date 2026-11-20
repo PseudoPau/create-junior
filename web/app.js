@@ -1,11 +1,19 @@
 import {openDrawingViewer} from './drawing-viewer.js?v=r1-4';
+import {renderReviewFlow} from './review-flow.js?v=r2-1';
+import {parseQuantity} from './quantity-input.js?v=r2-2';
 const API = '/api/workbench';
-const state = { page:'home', packageSnapshot:null, homeDraft:localStorage.getItem('junior-home-draft')||'', commandDraft:'', projectDetails:{}, project:null, projects:[], proposal:null, checks:[], coverage:{}, versions:[], preparation:null, dirtyForms:false, context:{revision:null,preferences:{},inventory:[]}, tab:'references', sidebarMode:'tasks', sidebarOpen:true, listMode:'joints', inspectedJointId:null, listPartId:null, designViewKey:null, activeTask:'reference', selectedId:null, busy:false, viewport:null, noticeTimer:null, conversationOpen:false, interactionRecords:[], localMessages:[], conversationProject:null, historyKey:'', polling:false, referenceDraft:'', fitDraft:'', referenceErrors:{}, resolvingReference:null, aiStatus:null, generating:false, generationError:'' };
+const state = { page:'home', packageSnapshot:null, homeDraft:localStorage.getItem('junior-home-draft')||'', commandDraft:'', projectDetails:{}, project:null, projects:[], proposal:null, checks:[], coverage:{}, versions:[], preparation:null, dirtyForms:false, context:{revision:null,preferences:{},inventory:[]}, tab:'references', sidebarMode:'tasks', sidebarOpen:false, listMode:'joints', inspectedJointId:null, listPartId:null, designViewKey:null, activeTask:'reference', selectedId:null, busy:false, viewport:null, noticeTimer:null, conversationOpen:false, interactionRecords:[], localMessages:[], conversationProject:null, historyKey:'', polling:false, referenceDraft:'', fitDraft:'', referenceErrors:{}, resolvingReference:null, aiStatus:null, generating:false, generationError:'' };
 const $ = id => document.getElementById(id);
 const clone = value => structuredClone(value);
 function node(tag, attrs = {}, ...children) {
   const element = document.createElement(tag);
   for (const [key,value] of Object.entries(attrs)) { if (key.startsWith('on')) element.addEventListener(key.slice(2).toLowerCase(),value); else if (key === 'class') element.className=value; else if (key==='checked' || key==='disabled' || key==='selected' || key==='open') element[key]=!!value; else if (value!==null && value!==undefined) element.setAttribute(key,String(value)); }
+  for (const child of children.flat(Infinity)) if(child!==null && child!==undefined) element.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  return element;
+}
+function svgNode(tag, attrs = {}, ...children) {
+  const element = document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for (const [key,value] of Object.entries(attrs)) if (value!==null && value!==undefined) element.setAttribute(key,String(value));
   for (const child of children.flat(Infinity)) if(child!==null && child!==undefined) element.append(child instanceof Node ? child : document.createTextNode(String(child)));
   return element;
 }
@@ -15,7 +23,7 @@ function report(error) { notice(error?.message || String(error),true); }
 function notice(text,error=false) { const target=$('notice'); target.textContent=text; target.className='notice'+(error?' error':''); clearTimeout(state.noticeTimer); state.noticeTimer=setTimeout(()=>target.classList.add('hidden'),error?9000:4500); }
 async function api(path,options={}) {
   const response=await fetch(API+path,options); let payload; try { payload=await response.json(); } catch { throw new Error('服务返回了无法读取的数据，请检查本地服务。'); }
-  if(!response.ok) { if(response.status===409 && path==='/context')throw new Error('个人偏好或仓库已在其他页面更新，请重新加载后再保存；本次没有覆盖远端记录。'); const detail=payload.detail; const message=typeof detail==='string'?detail:detail?.message || detail?.error || (Array.isArray(detail)?detail.map(item=>item.msg).join('；'):null); throw new Error(message || '请求失败（'+response.status+'）'); }
+  if(!response.ok) { if(response.status===409 && path==='/context')throw new Error('个人偏好或仓库已在其他页面更新，请重新加载后再保存；本次没有覆盖远端记录。'); const detail=payload.detail; const message=typeof detail==='string'?detail:detail?.message || detail?.error || (Array.isArray(detail)?detail.map(item=>item.msg).join('；'):null);const error=new Error(message || '请求失败（'+response.status+'）');error.detail=detail;throw error; }
   return payload;
 }
 const json = (method,body) => ({method,headers:{'content-type':'application/json'},body:JSON.stringify(body)});
@@ -23,12 +31,12 @@ const base = () => '/projects/'+state.project.id;
 function displayProject() { return state.proposal?.status==='ready'?{...state.project,...state.proposal.patch}:state.project; }
 function displayChecks() { return state.proposal?.status==='ready'?(state.proposal.checks||[]):state.checks; }
 function displayCoverage() { return state.proposal?.status==='ready'?(state.proposal.coverage||{}):state.coverage; }
-function requireNoProposal() { if(state.proposal?.status==='ready')throw new Error('请先接受或取消当前提案，再开始新的操作。'); }
+function requireNoProposal() { if(state.proposal?.status==='ready')throw new Error('请先采用或取消当前修改，再开始新的操作。'); }
 async function dismissProposal() { const proposal=state.proposal;if(!proposal)return;await guarded(async()=>{if(!proposal.local && proposal.status==='ready')await api(base()+'/proposal/dismiss',json('POST',{expected_revision:state.project.revision,proposal_id:proposal.id}));localStorage.setItem('junior-dismissed-'+state.project.id,proposal.id);state.proposal=null;await refreshData();render();});renderConversation(); }
 async function recoverProposal() {
   const response=await fetch(API+base()+'/proposal');
   if(response.status===404)return;
-  if(!response.ok)throw new Error('暂时无法恢复待接受候选，请刷新重试。');
+  if(!response.ok)throw new Error('暂时无法恢复等你决定的修改，请刷新重试。');
   const proposal=await response.json();
   if(proposal.status==='ready' && proposal.base_revision===state.project.revision && proposal.id!==localStorage.getItem('junior-dismissed-'+state.project.id))state.proposal=proposal;
 }
@@ -42,7 +50,7 @@ async function importProposal(file) {
     if(state.project.id!==projectId || state.project.revision!==revision)throw new Error('项目已变化，请重新选择候选文件。');
     requireNoProposal();
     state.proposal=await api('/projects/'+projectId+'/proposal/import'+(payload.request_id?'?request_id='+encodeURIComponent(payload.request_id):''),json('POST',{expected_revision:revision,summary:payload.summary,patch:payload.patch,purpose:payload.purpose||'design'}));
-    state.activeTask=state.proposal.purpose==='manufacturing'?'confirm':'reference';setPanel('tasks',!compactLayout.matches);render();notice('候选已导入，请核对三维、参考证据和检查结果后接受。');
+    state.activeTask=state.proposal.purpose==='manufacturing'?'confirm':'reference';setPanel('tasks',false);render();notice('候选已导入，请在模型下方采用或查看依据。');
   });
 }
 function chooseProposalFile() {requireNoProposal();$('proposal-input').click();}
@@ -54,23 +62,25 @@ function value(form,name) { return form.querySelector('[name="'+name+'"]')?.valu
 function number(form,name,fallback=null) { const input=value(form,name); return input==='' || input===undefined ? fallback : Number(input); }
 function boolField(label,name,checked=false) { return node('label',{class:'decision'},node('input',{type:'checkbox',name,checked}), ' '+label); }
 function setBusy(value) { state.busy=value;if(state.project)renderGenerationControls();renderHome(); document.body.setAttribute('aria-busy',String(value)); $('save-state').textContent=value?'正在处理…':state.project?'已保存到本机 · v'+state.project.revision:'尚未创建项目'; }
-async function guarded(action) {if(state.busy)throw new Error('上一个操作正在保存，请稍候。');let completed=false;setBusy(true);try{const result=await action();completed=true;return result;}finally{setBusy(false);if(state.project)renderConversation();if(completed&&state.project&&!state.dirtyForms){renderTasks();renderCandidateActions();}}}
+async function guarded(action) {if(state.busy)throw new Error('上一个操作正在保存，请稍候。');let completed=false;setBusy(true);try{const result=await action();completed=true;return result;}finally{setBusy(false);if(state.project)renderConversation();if(completed&&state.project&&!state.dirtyForms){renderTasks();renderCandidateActions();if(state.sidebarMode==='context')renderContext();}}}
 async function refreshData() {
   const project=state.project;
   const results=await Promise.allSettled([api(base()+'/checks'),api(base()+'/versions'),api(base()+'/preparation'),api(base()+'/interaction/history')]);
-  if(state.project?.id!==project.id) return;
+  if(state.project?.id!==project.id||state.project?.revision!==project.revision) return;
+  state.checksError=results[0].status==='rejected';
   state.checks=results[0].status==='fulfilled'?(results[0].value.checks||[]):[]; state.coverage=results[0].status==='fulfilled'?(results[0].value.coverage||{}):{};
   state.versions=results[1].status==='fulfilled'?results[1].value:[];
   state.preparation=results[2].status==='fulfilled'?results[2].value:null;
   if(results[3].status==='fulfilled')state.interactionRecords=results[3].value.records||[];
   for (const result of results) if(result.status==='rejected') report(result.reason);
+  await loadFitComparison();
 }
 async function mutate(patch,advance=false,proposalRevision=null) {
-  if(state.proposal && proposalRevision===null)throw new Error('请先接受或取消当前提案，再修改设计。');
-  if(proposalRevision!==null && proposalRevision!==state.project.revision)throw new Error('提案基于旧版本，不能应用到当前设计；请取消并重新生成。');
+  if(state.proposal && proposalRevision===null)throw new Error('请先采用或取消当前修改，再继续改设计。');
+  if(proposalRevision!==null && proposalRevision!==state.project.revision)throw new Error('这版修改基于旧版本，不能用于当前设计；请取消后重新生成。');
   return guarded(async()=>{ state.project=await api(base(),json('PUT',{expected_revision:state.project.revision,patch})); state.proposal=null; state.dirtyForms=false; await refreshData(); if(advance) state.activeTask=nextTask(); render(); return state.project; });
 }
-const tasks=[['reference','参考','参考与构造'],['fit','尺寸','空间 / 使用 / 家具尺寸'],['make','材料','材料与连接'],['confirm','资料','图纸与装配']];
+const tasks=[['reference','复原','这是你要的那把椅子吗'],['fit','适己','它哪里不适合你'],['make','做法','你打算怎么做'],['confirm','加工包','图纸、清单与装配']];
 function taskDone(id) {
   const p=state.project;if(!p)return false;
   if(id==='reference')return p.scope==='supported' && p.parts?.length>0;
@@ -83,15 +93,46 @@ function taskAvailable(id) {
   if(id==='reference')return true;
   if(!taskDone('reference'))return false;
   if(id==='fit')return true;
-  return taskDone('fit')&&pendingRequest()?.stage!=='fit';
+  return true;
 }
 function goTask(id) {
   if(state.dirtyForms)throw new Error('先保存正在编辑的内容，再切换步骤。');
-  if(!taskAvailable(id)){notice(id==='fit'?'先采用参考模型，再调整尺寸。':'先确定目标尺寸，再安排做法。');return;}
+  if(!taskAvailable(id)){notice('先得到第一版模型，再继续设计。');return;}
   showPage('design');
-  clearInspection(false);state.activeTask=id;state.conversationOpen=false;setPanel('tasks',true);renderTasks();renderConversation();focusTask(id);
+  clearInspection(false);state.activeTask=id;state.conversationOpen=false;setPanel('tasks',true);renderTasks();renderModelGuide();renderConversation();focusTask(id);
 }
 function pendingRequest() {const req=state.preparation?.request;return req?.status==='pending'&&req.base_revision===state.project.revision?req:null;}
+function activeRun(){const run=state.designRun;return run?.project_id===state.project?.id&&run.base_revision===state.project.revision?run:null;}
+async function createDesignRun(intent,text=''){
+  requireNoProposal();
+  const existing=activeRun();if(existing&&['waiting_for_session','running','needs_input'].includes(existing.status))throw new Error('已有任务正在处理，请先补充当前问题或取消任务。');
+  await guarded(async()=>{state.designRun=await api(base()+'/design-runs',json('POST',{expected_revision:state.project.revision,intent,text,client_request_id:crypto.randomUUID()}));state.generationError='';state.conversationOpen=false;state.dirtyForms=false;state.sidebarMode='tasks';setPanel('tasks',true);render();});
+}
+function runCard(){
+  const run=activeRun();if(!run||['ready','completed','dismissed'].includes(run.status))return null;
+  const labels={waiting_for_session:'等待当前会话处理',running:'正在处理设计',needs_input:'需要你补充一项信息',failed:'这次没有完成',cancelled:'任务已取消',stale:'设计已变化',interrupted:'处理已中断'};
+  const card=node('section',{class:'session-run-card',role:'status'},node('strong',{},labels[run.status]||run.status));
+  if(run.status==='waiting_for_session')card.append(paragraph('在当前聊天说“处理 Junior 请求”。模型返回后会直接显示在这里。'),button('复制协作请求',async()=>{await navigator.clipboard.writeText('处理 Junior 项目 '+run.project_id+' 的设计任务 '+run.id+'，完成参考分析、建模检查和修正后返回网页候选。');notice('已复制。');},'quiet'));
+  if(run.status==='running')card.append(paragraph(run.stage||'正在读取参考并检查模型。'));
+  if(run.status==='needs_input'){
+    const input=node('input',{type:'text','aria-label':'补充回答'}),question=typeof run.question==='string'?run.question:run.question?.text||run.question?.message||'请补充当前设计所需的信息。';
+    card.append(paragraph(question),input,button('提交并继续',async()=>{if(!input.value.trim())throw new Error('请填写回答。');state.designRun=await api(base()+'/design-runs/'+run.id+'/answer',json('POST',{expected_revision:state.project.revision,answer:input.value.trim()}));state.dirtyForms=false;render();},'primary'));
+  }
+  if(run.error)card.append(paragraph(typeof run.error==='string'?run.error:run.error.message||'任务未完成，请重试。'));
+  if(['waiting_for_session','running','needs_input'].includes(run.status))card.append(button('取消任务',async()=>{state.designRun=await api(base()+'/design-runs/'+run.id+'/cancel',json('POST',{expected_revision:state.project.revision}));render();},'quiet'));
+  else card.append(button('重新提交',()=>createDesignRun(state.project.parts.length?'modify':'reconstruct',run.text||''),'quiet'));
+  return card;
+}
+async function refreshDesignRun(){
+  const projectId=state.project.id,revision=state.project.revision;
+  const data=await api(base()+'/design-runs');if(state.project.id!==projectId||state.project.revision!==revision)return;
+  const terminal=new Set(['completed','dismissed']);
+  const run=data.active||(data.runs||[]).find(run=>run.base_revision===revision&&!terminal.has(run.status));
+  const changed=JSON.stringify(run)!==JSON.stringify(state.designRun);state.designRun=run||null;
+  if(run?.status==='ready'&&run.result_kind==='advice'){await loadFitComparison();}
+  else if(run?.status==='ready'&&!state.proposal&&!state.dirtyForms&&run.proposal_id!==localStorage.getItem('junior-dismissed-'+projectId))await recoverProposal();
+  if(changed&&!state.dirtyForms){if(run&&['waiting_for_session','running','needs_input'].includes(run.status)&&localStorage.getItem('junior-sidebar-open-v2')!=='closed')setPanel('tasks',true,{persist:false});render();}
+}
 function handoffCard() {
   const req=pendingRequest();if(!req)return null;
   const text='处理 Junior 项目“'+state.project.name+'”的请求，项目 ID：'+state.project.id+'，请求 ID：'+req.id+'。';
@@ -100,6 +141,7 @@ function handoffCard() {
 function render() {
   if(!state.project)return;
   const p=state.project, shown=displayProject(), preview=state.proposal?.status==='ready';
+  const historyRevision=p.id+':'+p.revision;if(state.historyRevision!==historyRevision&&!state.historyNavigating){state.undoTargets=null;state.redoTargets=[];}state.historyRevision=historyRevision;
   const viewKey=JSON.stringify([p.id,shown.parts,shown.joints]);
   if(state.designViewKey!==viewKey){clearInspection(false);state.designViewKey=viewKey;}
   if(!shown.parts?.some(part=>part.id===state.selectedId))state.selectedId=null;
@@ -110,58 +152,71 @@ function render() {
   const hasReferences=(p.references?.length||0)>0;
   const hasModel=!!shown.parts?.length;
   document.body.classList.toggle('awaiting-model',!hasModel);
-  $('quick-reference-title').textContent=hasReferences?'参考已收到':'你想复刻哪件家具？';
-  $('quick-reference-hint').textContent=hasReferences?'接下来先展开设计构思，确认家具类型、使用方式和需要保留的特点。':'把成品参考带进来，先得到一版可编辑模型，再调整尺寸、材料和连接。';
+  $('quick-reference-title').textContent=hasReferences?'在这里复原你的椅子':'你想复刻哪件家具？';
+  $('quick-reference-hint').textContent=hasReferences?'任务进度和需要补充的信息都在下方。模型返回后会直接出现在这里。':'带入成品参考，先原样复原出可编辑模型，再只改不适合你的地方。';
   $('quick-reference-form').hidden=hasReferences&&!hasModel;
   const sampleEntry=document.querySelector('.sample-entry');if(sampleEntry)sampleEntry.hidden=hasReferences;
   if(document.activeElement!==$('quick-reference-input'))$('quick-reference-input').value=state.referenceDraft;
   $('reference-receipts').replaceChildren(...(p.references||[]).map(ref=>node('div',{class:'reference-receipt-item'},node('span',{},({image:'图片',link:'链接',note:'说明',document:'PDF'})[ref.kind]||'图片'),node('strong',{},ref.name))));
   renderGenerationControls();
   renderGenerationConcept(hasReferences&&!hasModel);
-  const handoff=$('generation-handoff');handoff.replaceChildren();if(pendingRequest())handoff.append(handoffCard());
-  $('canvas-title').textContent=preview?'待采用的模型候选':hasModel?p.name:'参考与模型';
-  $('canvas-status').textContent=preview?'候选预览':state.generating?'正在生成候选…':p.confirmed_revision===p.revision?'已确认 v'+p.revision:hasModel?'设计中':pendingRequest()?'等待会话返回':hasReferences?'参考已保存':'等待参考';
-  document.querySelectorAll('[data-flow]').forEach(el=>{el.disabled=!!state.proposal;el.setAttribute('aria-current',(state.activeTask==='confirm'?'make':state.activeTask)===el.dataset.flow?'step':'false');el.setAttribute('aria-description',taskAvailable(el.dataset.flow)?'':el.dataset.flow==='fit'?'需要先采用参考模型':'需要先确定目标尺寸');});
+  const handoff=$('generation-handoff');handoff.replaceChildren();
+  $('canvas-title').textContent=preview?(p.parts?.length?'修改预览 · 等你决定':'第一版模型 · 等你决定'):hasModel?p.name:'参考与模型';
+  $('canvas-status').textContent=preview?'预览中':activeRun()?.status==='running'?'正在处理设计':activeRun()?.status==='waiting_for_session'?'等待会话处理':hasModel?'设计中':hasReferences?'参考已保存':'等待参考';
+  document.querySelectorAll('[data-flow]').forEach(el=>{el.disabled=!!state.proposal;el.setAttribute('aria-current',(state.activeTask==='confirm'?'make':state.activeTask)===el.dataset.flow?'step':'false');el.setAttribute('aria-description',taskAvailable(el.dataset.flow)?'':el.dataset.flow==='fit'?'需要先得到第一版模型':'需要先完成适己');});
   $('flow-drawings').disabled=!p.parts?.length;
   renderCandidateActions();
   $('package-button').disabled=!p.parts?.length;
-  $('package-button').textContent='制作包 ↗';
-  $('undo').disabled=state.versions.filter(version=>version.revision<p.revision).length===0 || preview;
+  const unresolved=state.checks.filter(item=>item.severity==='blocker').length;$('package-button').textContent='加工包'+(unresolved?' · '+unresolved+' 项待处理':' ↗');
+  $('undo').disabled=(state.undoTargets?state.undoTargets.length===0:state.versions.filter(version=>version.revision<p.revision).length===0)||preview;
+  if($('redo'))$('redo').disabled=!state.redoTargets?.length||preview;
   document.querySelectorAll('[data-phase]').forEach(element=>{ const active=state.activeTask==='reference'?'reference':state.activeTask==='confirm'?'make':'design';element.classList.toggle('active',element.dataset.phase===active); });
-  state.viewport?.load(preview?(state.proposal.patch?.parts || p.parts):p.parts||[],{hardware:packagePreview()?.hardware_instances||[]}); state.viewport?.setSelection(state.selectedId);
+  const viewportParts=shown.parts||[],viewportHardware=packagePreview()?.hardware_instances||[];
+  const viewportKey=JSON.stringify([p.id,viewportParts,viewportHardware]);
+  if(state.viewport&&state.viewportKey!==viewportKey){
+    state.viewport.load(viewportParts,{hardware:viewportHardware});
+    state.viewportKey=viewportKey;
+  }
+  state.viewport?.setSelection(state.selectedId);
   document.querySelectorAll('[data-tool]').forEach(element=>{element.disabled=!!state.proposal && ['translate','rotate','scale','mirror'].includes(element.dataset.tool);});
   if(state.proposal){state.viewport?.setTool('select');document.querySelectorAll('[data-tool]').forEach(element=>element.classList.toggle('active',element.dataset.tool==='select'));}
   renderTasks(); renderContext(); renderModelGuide(); renderShortcuts(); renderConversation();
   state.projectDetails[p.id]=p;state.projects=state.projects.map(item=>item.id===p.id?{...item,name:p.name,revision:p.revision,updated_at:p.updated_at}:item);persistDrafts();renderHome();syncPage();
   if(state.page==='package')renderPackagePage();
+  renderDimensionLabels();
 }
-function renderGenerationConcept(show) {
-  const host=$('generation-concept');if(!host)return;host.replaceChildren();
-  if(!show)return;
-  const pending=pendingRequest();
-  const card=node('section',{class:'generation-concept-card'},node('span',{class:'eyebrow'},state.generating?'正在处理':'下一步'),node('h3',{},pending?'设计构思已提交':state.generating?'正在生成可编辑模型':'展开设计构思'),paragraph(pending?'需求已保存，等待当前聊天返回一版可编辑模型。':state.generating?'正在把参考转换为可编辑候选，完成后会直接显示在中央画布。':'参考已经收到。我会先整理家具类型、主要结构和使用方式，再给你一版可编辑模型。'));
-  if(state.generationError)card.append(node('p',{class:'flow-status error'},state.generationError));
-  if(!pending)card.append(node('div',{class:'generation-concept-actions'},button(state.generating?'正在生成…':state.aiStatus?.ready?'生成可编辑模型 →':'提交设计构思',generateModel,'primary',state.busy||state.generating),button('补充参考',()=>openReferenceComposer(''),'quiet',state.busy||state.generating)));
-  host.append(card);
+function renderDimensionLabels(){
+  if(!state.viewport)return;
+  const project=displayProject(),module=project?.modules?.[0],seat=project?.parts?.find(p=>p.kind==='seat_board');
+  if(!seat||!module||state.page!=='design'||!(state.activeTask==='fit'||state.selectedId===seat.id)){state.viewport.setDimensions([]);return;}
+  const [w,h,d]=seat.size_mm,[x,y,z]=seat.position_mm;
+  const dimensions=[{key:'seat_width_mm',label:'座宽 '+Math.round(w)+' mm',start:[x-w/2,y+h/2+15,z+d/2+25],end:[x+w/2,y+h/2+15,z+d/2+25]},
+    {key:'seat_depth_mm',label:'座板前后 '+Math.round(d)+' mm',start:[x+w/2+25,y+h/2+15,z-d/2],end:[x+w/2+25,y+h/2+15,z+d/2]},
+    {key:'seat_height_mm',label:'座高 '+Math.round(state.viewport.seatSurfaceHeight(seat.id))+' mm',start:[x-w/2-35,0,z],end:[x-w/2-35,y+h/2,z]}];
+  state.viewport.setDimensions(dimensions.map(item=>({...item,onEdit:event=>openDimensionEditor(module,item.key,event.currentTarget.getBoundingClientRect())})));
 }
+function openDimensionEditor(module,key,anchor=null){
+  document.querySelector('.model-dimension-editor')?.remove();
+  const item=state.fitComparison?.items?.find(item=>item.key===key),fallback=module.target?.[key]??0;
+  const input=node('input',{type:'text',inputmode:'decimal',value:item?.current_value??fallback,'aria-label':item?.label||key});
+  const error=node('p',{class:'entry-error',role:'alert'}),actions=node('div',{class:'action-row'});
+  const editor=node('div',{class:'model-dimension-editor'},node('strong',{},item?.label||confirmationItems.find(i=>i[0]===key)?.[1]||key),input,error,actions);
+  $('viewport').append(editor);if(anchor){const bounds=$('viewport').getBoundingClientRect();editor.style.left=Math.max(160,Math.min(bounds.width-160,anchor.left-bounds.left+anchor.width/2))+'px';editor.style.top=Math.max(20,Math.min(bounds.height-190,anchor.top-bounds.top-22))+'px';}let timer,redesign=false;
+  const preview=async()=>{try{await previewDimension(module,key,input.value,key==='back_angle_deg'?'deg':'mm',redesign);error.textContent='预览中 · Enter 保存，Esc 取消';}catch(exc){error.textContent=exc.message;if(exc.detail?.can_redesign&&!redesign){actions.replaceChildren(button('保留原设计',cancel,'quiet'),button('作为改款预览',async()=>{redesign=true;actions.replaceChildren();await preview();},'quiet'));}else actions.replaceChildren();throw exc;}};
+  const cancel=async()=>{clearTimeout(timer);state.dimensionToken=(state.dimensionToken||0)+1;editor.remove();state.dirtyForms=false;if(state.proposal?.dimensionEdit)await dismissProposal();else render();};
+  const commit=async()=>{clearTimeout(timer);try{const value=parseQuantity(input.value,key==='back_angle_deg'?'deg':'mm');if(state.proposal?.dimensionEdit?.key!==key||state.proposal.dimensionEdit.value!==value)await preview();await acceptProposal();editor.remove();}catch(exc){error.textContent=exc.message;}};
+  input.addEventListener('input',()=>{clearTimeout(timer);state.dirtyForms=true;timer=setTimeout(()=>preview().catch(()=>{}),400);});
+  input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();commit();}if(event.key==='Escape'){event.preventDefault();cancel().catch(report);}});
+  actions.append(button('取消',cancel,'quiet'),button('保存',commit,'primary'));input.focus();input.select();
+}
+function renderGenerationConcept(show) { $('generation-concept')?.replaceChildren(); }
 function renderTasks() {
   if(!taskAvailable(state.activeTask))state.activeTask=taskDone('reference')?'fit':'reference';
   const list=$('task-list');list.replaceChildren();
-  if(state.proposal&&!state.conversationOpen) {
-    const proposal=state.proposal; const card=node('div',{class:'proposal-status-card'},node('span',{class:'eyebrow'},proposal.status==='ready'?'模型候选':'模型生成状态'),node('strong',{},proposal.status==='ready'?'候选已在中央画布展示':'候选尚未形成'),paragraph(proposal.summary || proposal.error || '请补充参考或检查 AI 设置。'));
-    if(proposal.status==='ready' && proposal.checks) {
-      const checks=[...proposal.checks].sort((a,b)=>(a.severity==='blocker'?0:1)-(b.severity==='blocker'?0:1));
-      const details=node('details',{},node('summary',{},'检查结果 · '+checks.filter(check=>check.severity==='blocker').length+' 项阻塞'),checks.map(issueCard));
-      const uncovered=proposal.coverage?.not_checked||[];
-      if(uncovered.length)details.append(paragraph('尚未覆盖：'+uncovered.join('；')));
-      card.append(details,paragraph('采用或放弃请使用中央候选栏中的操作。'));
-    }
-    list.append(card);
-  }
   $('task-panel').classList.toggle('has-design',!!state.project.joints?.length);
   const current=tasks.find(([id])=>id===state.activeTask)||tasks[0];
   const card=node('section',{class:'active-task'});
-  card.append(node('div',{class:'active-task-heading'},node('span',{class:'task-kicker'},current[1]),node('h2',{},current[1])));
+  if(current[0]!=='fit')card.append(node('div',{class:'active-task-heading'},node('span',{class:'task-kicker'},current[1]),node('h2',{},current[2])));
   const body=node('div',{class:'task-body'});({reference:renderReferenceTask,fit:renderFitTask,make:renderMakeTask,confirm:renderConfirmTask})[current[0]](body);card.append(body);list.append(card);
   const taskViewKey=state.project.id+':'+state.activeTask+':'+(state.proposal?.id||'');if(state.taskViewKey!==taskViewKey){$('task-panel').scrollTop=0;state.taskViewKey=taskViewKey;}
 }
@@ -178,9 +233,10 @@ function referenceVisualCard(ref) {
 }
 function renderReferenceTask(body) {
   const p=state.project,refs=p.references||[],pending=pendingRequest();
+  const currentRun=runCard();if(currentRun)body.append(currentRun);
   if(!refs.length)body.append(paragraph('给我一个链接、一张图，或说说你想做什么。'));
   if(refs.length){
-    body.append(node('section',{class:'reference-evidence'},node('div',{class:'reference-evidence-heading'},node('span',{class:'eyebrow'},'参考证据'),node('strong',{},'已收到 '+refs.length+' 项')),node('div',{class:'reference-evidence-grid'},refs.map(referenceVisualCard))));
+    body.append(node('section',{class:'reference-evidence'},node('div',{class:'reference-evidence-heading'},node('span',{class:'eyebrow'},'参考资料'),node('strong',{},'已收到 '+refs.length+' 项')),node('div',{class:'reference-evidence-grid'},refs.map(referenceVisualCard))));
     for(const ref of refs.filter(ref=>ref.kind==='link')){
       if(state.resolvingReference===ref.id)body.append(node('p',{class:'flow-status','role':'status'},'正在读取网页标题和文字…'));
       else if(state.referenceErrors[ref.id])body.append(node('div',{class:'flow-status error','role':'alert'},paragraph(state.referenceErrors[ref.id]),button('重新读取链接',()=>resolveReference(ref.id),'quiet')));
@@ -188,29 +244,38 @@ function renderReferenceTask(body) {
       else body.append(button('读取链接内容',()=>resolveReference(ref.id),'quiet',state.busy));
     }
   }
-  if(state.proposal){body.append(paragraph('候选已在中央画布展示。先查看模型，再在底部候选栏采用或放弃。'));return;}
+  if(state.proposal){body.append(paragraph('模型已显示在中央画布。先看它像不像，再在画布下方决定是否采用。'));return;}
   const editor=node('form',{class:'reference-entry','data-flow-draft':'reference'});
   const input=node('textarea',{'aria-label':'参考链接或想法',placeholder:'粘贴产品链接，或描述想做的椅子…',maxlength:6000},state.referenceDraft);
   input.addEventListener('input',()=>{state.referenceDraft=input.value;persistDrafts();});
   const error=node('p',{class:'entry-error',role:'alert'});
   const submit=node('button',{type:'submit',class:'primary',disabled:state.busy},refs.length?'添加参考':'带入参考 →');
   editor.append(input,node('div',{class:'action-row'},submit,button('图片 / PDF',()=>$('reference-input').click(),'quiet',state.busy)),error);
-  editor.addEventListener('submit',async event=>{event.preventDefault();submit.disabled=true;try{await saveReferenceText(input.value);}catch(exc){error.textContent=exc.message;}finally{submit.disabled=false;}});
+  editor.addEventListener('submit',async event=>{event.preventDefault();submit.disabled=true;try{await saveReferenceText(input.value);if(!state.project.parts.length)await generateModel();}catch(exc){error.textContent=exc.message;}finally{submit.disabled=false;}});
   body.append(refs.length?node('details',{class:'optional-controls'},node('summary',{},'补充参考'),editor):editor);
   if(p.scope==='unsupported')body.append(node('div',{class:'issue'},p.scope_reason||'当前参考超出首版支持范围。'));
+  if(activeRun())return;
   if(pending)body.append(handoffCard());
-  if(pending&&!p.parts?.length)body.append(paragraph('设计构思已提交，等待候选返回。'));
-  else if(!pending&&p.parts?.length)body.append(button('看尺寸方案 →',()=>goTask('fit'),'primary'));
-  else if(!pending&&refs.length)body.append(paragraph('参考已就位。回到主画面生成一个可编辑模型候选，再继续调整尺寸和加工条件。'));
+  if(pending&&!p.parts?.length)body.append(paragraph('已提交，等待模型返回。'));
+  else if(!pending&&p.parts?.length){
+    if(!p.baseline_revision){
+      const versions=node('select',{'aria-label':'选择原版设计'},node('option',{value:''},'选择哪一版作为原版'),state.versions.map(v=>node('option',{value:v.revision},'v'+v.revision+(v.revision===p.revision?' · 当前设计':''))));
+      body.append(paragraph('旧项目尚未设置原版。选择用于对照的版本，当前设计不会被替换。'),versions,button('设为原版并继续',async()=>{if(!versions.value)throw new Error('先选择原版设计版本。');await guarded(async()=>{state.project=await api(base()+'/baseline',json('POST',{expected_revision:state.project.revision,source_revision:Number(versions.value)}));await refreshData();state.activeTask='fit';render();});},'primary'));
+    }else body.append(button('继续：适己 →',()=>goTask('fit'),'primary'));
+  }
+  else if(!pending&&refs.length)body.append(button('按参考复原',generateModel,'primary'));
 }
 function renderFitTask(body) {
   const p=state.project;
-  if(!p.parts?.length){body.append(paragraph('先完成参考模型，尺寸会从模型带入。'),button('回到参考',()=>goTask('reference'),'primary'));return;}
+  const currentRun=runCard();if(currentRun)body.append(currentRun);
+  if(!p.parts?.length){body.append(paragraph('先得到第一版模型，再来调整不适合你的地方。'),button('回到复原',()=>goTask('reference'),'primary'));return;}
   const shown=displayProject();
   const activeModule=(shown.modules||[]).find(module=>module.status!=='conflict'&&module.status!=='needs_review')||(shown.modules||[])[0];
+  if(state.proposal&&!state.proposal.dimensionEdit){body.append(paragraph('画布正在预览调整，采用后继续。'));return;}
   if(activeModule)body.append(moduleFitCard(activeModule,shown));
-  body.append(node('div',{class:'fit-summary'},node('span',{class:'eyebrow'},'当前模型 · mm'),node('strong',{},'先看这版尺寸'),modelDimensionFacts()));
-  if(state.proposal){body.append(paragraph('画布正在预览调整，采用后再核对尺寸。'));return;}
+  if(activeModule&&(!hasBodyData(activeModule)||editingModuleKey===moduleKey(activeModule)))return;
+  if(!activeModule)body.append(node('div',{class:'fit-summary'},node('span',{class:'eyebrow'},'当前模型 · mm'),node('strong',{},'先看这版尺寸'),modelDimensionFacts()));
+  if(state.proposal&&!state.proposal.dimensionEdit){body.append(paragraph('画布正在预览调整，采用后继续。'));return;}
   const pending=pendingRequest();
   if(pending)body.append(handoffCard());
   const form=node('form',{class:'fit-request','data-flow-draft':'fit'});
@@ -220,83 +285,134 @@ function renderFitTask(body) {
   const error=node('p',{class:'entry-error',role:'alert'}),submit=node('button',{type:'submit',class:'primary',disabled:state.busy},pending?'补充调整要求':'按这个要求调整');
   form.append(input,submit,error);
   form.addEventListener('submit',async event=>{event.preventDefault();const text=input.value.trim();if(!text){error.textContent='说说使用者、用途，或想改的尺寸。';return;}submit.disabled=true;try{await requestFit(text);}catch(exc){error.textContent=exc.message;}finally{submit.disabled=false;}});
-  body.append(form);
-  if(!pending)body.append(button(p.scale?.confirmed?'尺寸已定，继续 →':'就用当前尺寸 →',acceptCurrentDimensions,'quiet',state.busy));
+  const optional=node('details',{class:'optional-controls'},node('summary',{},'还有其他想法？'),form);
+  body.append(optional);
 }
 const anthropometryFields=[
-  ['stature_mm','身高','身高记录，用于建立个人模数档案'],
-  ['hip_breadth_mm','臀宽','坐姿时左右净宽'],
-  ['buttock_popliteal_length_mm','臀膝长','从臀部后缘到膝窝的长度'],
-  ['popliteal_height_mm','腘窝高','小腿自然垂下时的座高参考'],
-  ['shoe_sole_mm','鞋底厚度','穿鞋使用时从座高扣除']
+  ['stature_mm','身高','站立时脚底到头顶'],
+  ['sitting_height_mm','坐高','坐面到头顶'],
+  ['hip_breadth_mm','臀宽','坐姿下臀部最宽处']
 ];
+const postureOptions=[
+  ['upright','正坐','身体直立，座面较平'],
+  ['reclined','靠坐','背部有支撑，身体向后靠'],
+  ['leaning','斜靠','更深后仰，偏休闲姿势'],
+  ['cross_legged','盘腿','是否适合取决于原椅子的构造与可调范围']
+];
+const postureLabels=Object.fromEntries(postureOptions.map(([key,label])=>[key,label]));
+let editingModuleKey=null;
+const moduleKey=module=>state.project.id+':'+module.id;
+function hasBodyData(module){const a=module.anthropometry||{};return a.measurement_source==='user_input'&&anthropometryFields.every(([key])=>Number(a[key])>0);}
 const confirmationItems=[
-  ['seat_height_mm','座高','腘窝高 − 鞋底厚度 − 5 mm 下沉量'],
-  ['seat_depth_mm','座深','臀膝长 − 40 mm 靠背与前缘余量'],
-  ['seat_width_mm','座宽','臀宽 + 80 mm 左右活动余量'],
+  ['seat_height_mm','座高','结合身高、坐高和主要坐姿估算'],
+  ['seat_depth_mm','座板前后长度','原椅子与实际座面关系'],
+  ['seat_width_mm','座宽','结合臀宽和主要坐姿活动余量估算'],
   ['back_angle_deg','靠背角','当前模型目标；需要结合坐姿试靠确认']
 ];
 function mmValue(value){return typeof value==='number'&&Number.isFinite(value)?Math.round(value):'';}
 function displayUnitValue(value,unit){const mm=mmValue(value);return mm===''?'':unit==='cm'?(mm/10).toFixed(mm%10?1:0):String(mm);}
-function unitToMm(value,unit){const number=Number(value);if(!Number.isFinite(number)||number<=0)return null;return Math.round(number*(unit==='cm'?10:1));}
-function moduleCalculations(module){
-  const a=module.anthropometry||{},t=module.target||{};
-  const results={};
-  if(a.popliteal_height_mm)results.seat_height_mm={value:Math.max(300,a.popliteal_height_mm-(a.shoe_sole_mm||0)-5),formula:'腘窝高 '+a.popliteal_height_mm+' − 鞋底 '+(a.shoe_sole_mm||0)+' − 下沉 5'};
-  if(a.buttock_popliteal_length_mm)results.seat_depth_mm={value:Math.max(180,a.buttock_popliteal_length_mm-40),formula:'臀膝长 '+a.buttock_popliteal_length_mm+' − 靠背与前缘余量 40'};
-  if(a.hip_breadth_mm)results.seat_width_mm={value:a.hip_breadth_mm+80,formula:'臀宽 '+a.hip_breadth_mm+' + 左右活动余量 80'};
-  results.back_angle_deg={value:t.back_angle_deg??10,formula:'沿用当前模型目标；需要试靠确认'};
-  return results;
+function unitToMm(value,unit){try{return parseQuantity(value,unit);}catch{return null;}}
+async function confirmModuleTarget(module,key,rawValue,unit){
+  const value=parseQuantity(rawValue,key==='back_angle_deg'?'deg':unit);
+  if(!state.proposal?.dimensionEdit||state.proposal.dimensionEdit.key!==key||state.proposal.dimensionEdit.value!==value)await previewDimension(module,key,rawValue,unit);
+  await acceptProposal();
+}
+async function previewDimension(module,key,rawValue,unit='mm',allowRedesign=false){
+  const token=(state.dimensionToken||0)+1;state.dimensionToken=token;
+  const value=parseQuantity(rawValue,key==='back_angle_deg'?'deg':unit),projectId=state.project.id,revision=state.project.revision;
+  if(state.proposal&&!state.proposal.dimensionEdit)throw new Error('先采用或取消当前修改。');
+  const proposal=await api(base()+'/modules/'+encodeURIComponent(module.id)+'/edit-preview',json('POST',{expected_revision:revision,key,value,decision:'custom',allow_redesign:allowRedesign}));
+  if(token!==state.dimensionToken||state.project.id!==projectId||state.project.revision!==revision)return;
+  proposal.dimensionEdit={moduleId:module.id,key,value};state.proposal=proposal;state.dirtyForms=false;
+  state.viewport?.load(displayProject().parts,{hardware:proposal.package_preview?.hardware_instances||[]});
+  // Manual preview changes the viewport; the next full render must reconcile it.
+  state.viewportKey=null;
+  renderCandidateActions();renderDimensionLabels();
+  return proposal;
+}
+function normalizePosture(value){
+  const aliases={坐姿:'upright',直坐:'upright',正坐:'upright',靠坐:'reclined',斜靠:'leaning',盘腿:'cross_legged'};
+  return postureOptions.some(([key])=>key===value)?value:aliases[value]||'upright';
+}
+function estimatedAnthroValue(a,key){
+  return a[key]||'';
 }
 async function saveAnthropometry(module,form){
   const unit=form.querySelector('[name="anthro-unit"]').value,values={...module.anthropometry,measurement_source:'user_input'};
-  for(const [key] of anthropometryFields){const input=form.querySelector('[name="'+key+'"]');if(input?.value.trim()){const mm=unitToMm(input.value,unit);if(mm===null)throw new Error('请输入有效的 '+(anthropometryFields.find(item=>item[0]===key)?.[1]||'人体数据')+'。');values[key]=mm;}}
-  if(!Object.keys(values).some(key=>anthropometryFields.some(item=>item[0]===key)))throw new Error('至少填写一项人体数据。');
-  const confirmations={...(module.confirmations||{})};for(const [key] of confirmationItems)confirmations[key]=false;
-  await mutate({modules:state.project.modules.map(item=>item.id===module.id?{...item,anthropometry:values,confirmations,status:'target'}:item)},false);notice('人体数据已保存，家具尺寸建议已更新。');
+  for(const [key,label] of anthropometryFields){
+    const input=form.querySelector('[name="'+key+'"]');
+    if(!input?.value.trim())throw new Error('请填写 '+label+'，三项数据都会用于生成建议。');
+    const mm=unitToMm(input.value,unit);if(mm===null)throw new Error('请输入有效的 '+label+'。');values[key]=mm;
+  }
+  const posture=form.querySelector('[name="posture"]:checked')?.value||normalizePosture(module.posture);
+  values.posture=posture;
+  await guarded(async()=>{state.project=await api(base()+'/profile',json('POST',{expected_revision:state.project.revision,module_id:module.id,height_mm:values.stature_mm,sitting_height_mm:values.sitting_height_mm,hip_width_mm:values.hip_breadth_mm,posture}));state.dirtyForms=false;editingModuleKey=null;await refreshData();await loadFitComparison();render();});
+  state.savedProfile={height_mm:values.stature_mm,sitting_height_mm:values.sitting_height_mm,hip_width_mm:values.hip_breadth_mm,posture};state.keptFitItems=new Set();
+  await createDesignRun('modify','根据刚保存的三项身体数据和主要坐姿，对照原版基线，判断需要调整的项。通过 Module.suggestions 返回带依据与 anthropometry 快照的建议，不能直接修改当前几何；未知的范围保持未知。');
+  notice('身体数据已保存，已请当前会话对照原椅子提出建议。');
 }
-async function confirmModuleTarget(module,key,rawValue,unit){
-  const value=key==='back_angle_deg'?Number(rawValue):unitToMm(rawValue,unit);
-  if(!Number.isFinite(value)||value<=0)throw new Error('请输入有效的尺寸。');
-  const confirmations={...(module.confirmations||{}),[key]:true};
-  const allConfirmed=confirmationItems.every(([itemKey])=>confirmations[itemKey]);
-  await mutate({modules:state.project.modules.map(item=>item.id===module.id?{...item,target:{...item.target,[key]:Math.round(value)},confirmations,status:allConfirmed?'confirmed':'target'}:item)},false);
-  notice((confirmationItems.find(item=>item[0]===key)?.[1]||'尺寸')+'已确认。');
+const moduleBaseline={stature_mm:1830,sitting_height_mm:920,hip_breadth_mm:360};
+function moduleHumanFigure(module){
+  const a=module.anthropometry||{},unit='cm';
+  const svg=svgNode('svg',{class:'module-human-svg',viewBox:'0 0 180 300',role:'img','aria-label':'柯布西耶模度人比例参考'},
+    svgNode('path',{class:'module-human-grid',d:'M25 58h130M25 154h130M25 278h130'}),
+    svgNode('circle',{class:'module-human-head',cx:'86',cy:'75',r:'15'}),
+    svgNode('path',{class:'module-human-body',d:'M76 93 L63 105 L50 157 L55 160 L73 120 L71 165 L67 222 L59 274 L75 274 L88 186 L99 232 L111 274 L127 274 L112 216 L103 165 L103 105 L119 78 L125 20 L118 18 L109 72 L94 93 Z'}),
+    svgNode('path',{class:'module-human-measure',d:'M30 60v218m-5-218h10m-10 218h10M67 165h40'}),
+    svgNode('text',{class:'module-human-label',x:'38',y:'54'},'比例参考')
+  );
+  const fields=anthropometryFields.map(([key,label,hint])=>{
+    const current=estimatedAnthroValue(a,key),baseline=moduleBaseline[key];
+    return node('label',{class:'module-measurement'},node('span',{class:'module-measurement-top'},node('strong',{},label),node('small',{},'示例 '+displayUnitValue(baseline,unit)+' cm')),node('input',{type:'text',inputmode:'decimal',name:key,required:true,'aria-label':label,value:displayUnitValue(current,'cm'),placeholder:displayUnitValue(baseline,'cm')}),node('small',{},hint));
+  });
+  return node('div',{class:'module-human-layout'},node('div',{class:'module-human-figure'},svg,node('span',{class:'module-human-caption'},'模度人 · 参考比例')),node('div',{class:'module-measurements'},fields));
 }
 function anthropometryCard(module){
+  if(!hasBodyData(module)&&state.savedProfile){const p=state.savedProfile;module={...module,posture:p.posture,anthropometry:{...module.anthropometry,stature_mm:p.height_mm,sitting_height_mm:p.sitting_height_mm,hip_breadth_mm:p.hip_width_mm}};}
   const a=module.anthropometry||{},form=node('form',{class:'anthropometry-card'});
-  const heading=node('div',{class:'fit-card-heading'},node('div',{},node('span',{class:'eyebrow'},'人体模数'),node('strong',{},'输入你的实际数据')),node('select',{name:'anthro-unit','aria-label':'人体数据单位'},node('option',{value:'cm'},'cm'),node('option',{value:'mm'},'mm')));
-  form.append(heading,paragraph('数据只保存到当前项目，用来计算尺寸建议。可以只先填写你知道的项目。'));
-  const grid=node('div',{class:'anthro-grid'});
-  for(const [key,label,hint] of anthropometryFields){const field=node('label',{class:'anthro-field'},node('span',{},label),node('input',{type:'number',name:key,min:'0',step:'0.1',value:displayUnitValue(a[key],'cm'),placeholder:'未填写'}),node('small',{},hint));grid.append(field);}
-  form.append(grid,node('div',{class:'fit-card-actions'},button('保存人体数据',()=>saveAnthropometry(module,form),'primary',state.busy),node('span',{class:'fit-note'},'保存后统一换算为 mm')));return form;
+  const unitSelect=node('select',{name:'anthro-unit','aria-label':'人体数据单位'},node('option',{value:'cm'},'cm'),node('option',{value:'mm'},'mm'));
+  const heading=node('div',{class:'fit-card-heading'},node('span',{class:'fit-note'},state.savedProfile&&!hasBodyData(module)?'已带入本机档案，可修改后保存':'填写你的实际尺寸'),unitSelect);
+  form.append(heading,moduleHumanFigure(module));
+  const selected=normalizePosture(module.posture||a.posture);
+  const postureHint=node('p',{class:'posture-hint'},postureOptions.find(([key])=>key===selected)[2]);
+  const postureField=node('fieldset',{class:'posture-fieldset'},node('legend',{},'你主要怎么坐？'),node('div',{class:'posture-choices'},postureOptions.map(([key,label,hint])=>node('label',{class:'posture-choice'},node('input',{type:'radio',name:'posture',value:key,checked:selected===key,onChange:()=>{postureHint.textContent=hint;}}),node('strong',{},label)))),postureHint);
+  unitSelect.addEventListener('change',()=>{
+    const next=unitSelect.value,previous=next==='cm'?'mm':'cm';
+    for(const [key] of anthropometryFields){const input=form.querySelector('[name="'+key+'"]');input.placeholder=displayUnitValue(moduleBaseline[key],next);if(!input.value)continue;const mm=unitToMm(input.value,previous);if(mm!==null)input.value=displayUnitValue(mm,next);}
+  });
+  const error=node('p',{class:'entry-error',role:'alert'}),submit=node('button',{type:'submit',class:'primary',disabled:state.busy},'保存，查看尺寸建议 →');
+  form.append(postureField,error,submit);
+  form.addEventListener('submit',async event=>{event.preventDefault();submit.disabled=true;try{await saveAnthropometry(module,form);}catch(exc){error.textContent=exc.message;}finally{submit.disabled=false;}});
+  return form;
 }
 function moduleFitCard(module,project) {
-  const target=module.target||module.targets||{},anthropometry=module.anthropometry||{};
-  const values=[['座宽',target.width_mm??target.seat_width_mm],['座深',target.depth_mm??target.seat_depth_mm],['座高',target.height_mm??target.seat_height_mm],['靠背角',target.angle_deg??target.back_angle_deg]].filter(([,value])=>value!==null&&value!==undefined&&value!=='');
-  const kindLabels={support:'支撑',reach:'触达',clearance:'净空',storage:'收纳',surface:'操作面'},statusLabels={inferred:'待确认',target:'目标',confirmed:'已确认',conflict:'有冲突',needs_review:'需重新核对',observed:'已观察'};
-  const title=module.name||module.label||kindLabels[module.kind]||'当前使用方式',purpose=module.purpose||'',people=module.occupant||anthropometry.occupant||({adult:'成人',child:'儿童',older_adult:'长者'})[anthropometry.user_group]||anthropometry.posture;
-  const parts=(module.affected_part_ids||module.part_ids||[]).map(id=>project.parts?.find(part=>part.id===id)?.name||id).filter(Boolean),status=statusLabels[module.status]||'适配目标';
-  const card=node('section',{class:'module-fit-card'},node('div',{class:'module-fit-heading'},node('div',{},node('span',{class:'eyebrow'},'当前适配目标'),node('h3',{},title)),node('span',{class:'module-status'},status)));
-  if(purpose)card.append(node('p',{class:'module-fit-purpose'},purpose));
-  if(people||module.posture)card.append(node('p',{class:'module-fit-meta'},'使用方式 · '+[people,module.posture&&module.posture!==people?module.posture:null].filter(Boolean).join(' · ')));
-  if(values.length)card.append(node('div',{class:'module-target-grid'},values.map(([label,value])=>node('div',{},node('small',{},label),node('strong',{},typeof value==='number'?Math.round(value):value),node('span',{},label==='靠背角'?'°':'mm')))));
-  else card.append(node('p',{class:'module-fit-empty'},'先告诉我谁使用、怎么使用，Junior 会把它整理成可调整的尺寸目标。'));
-  if(parts.length)card.append(node('p',{class:'module-fit-parts'},'影响部件 · '+parts.join('、')));
-  if(module.status==='conflict'||module.status==='needs_review')card.classList.add('is-warning');
-  const calculations=moduleCalculations(module),calculationCard=node('section',{class:'calculation-card'},node('div',{class:'fit-card-heading'},node('div',{},node('span',{class:'eyebrow'},'人体模数 → 家具尺寸'),node('strong',{},'计算出的尺寸建议')),node('span',{class:'fit-note'},'建议值')));
-  calculationCard.append(paragraph('依据你保存的人体数据计算；采用前请试坐并核对空间。'));
-  calculationCard.append(node('div',{class:'calculation-list'},confirmationItems.map(([key,label,formula])=>{const result=calculations[key],current=target[key];return node('div',{class:'calculation-row'},node('div',{},node('strong',{},label),node('small',{},result?.formula||formula)),node('b',{},result?Math.round(result.value)+(key==='back_angle_deg'?'°':' mm'):(current?Math.round(current)+(key==='back_angle_deg'?'°':' mm'):'待输入')));})));
-  const confirmationCard=moduleConfirmationCard(module,calculations);return node('div',{class:'fit-module-stack'},card,anthropometryCard(module),calculationCard,confirmationCard);
+  const anthropometry=module.anthropometry||{},posture=normalizePosture(module.posture||anthropometry.posture);
+  const editing=!hasBodyData(module)||editingModuleKey===moduleKey(module);
+  const heading=node('div',{class:'module-page-heading'},node('span',{class:'eyebrow'},'MODULE'),node('h2',{},editing?'把模度人改成你':'只调整需要改变的地方'));
+  if(editing)return node('section',{class:'module-page','data-module-stage':'body'},heading,anthropometryCard(module),button('不填，保持原样继续',acceptCurrentDimensions,'quiet'));
+  const profile=node('div',{class:'module-profile-summary'},node('span',{},anthropometryFields.map(([key,label])=>label+' '+displayUnitValue(anthropometry[key],'cm')).join(' · ')+' cm · '+postureLabels[posture]),button('修改身体数据',()=>{editingModuleKey=moduleKey(module);renderTasks();$('task-panel').scrollTop=0;},'quiet'));
+  const comparison=state.fitComparison?.revision===state.project.revision?state.fitComparison:null;
+  const page=node('section',{class:'module-page module-complete'},profile);
+  if(!comparison){page.append(paragraph(state.fitComparisonError||'正在对照原椅子…'),button('重新比较',async()=>{await loadFitComparison();renderTasks();},'quiet'));return page;}
+  const suggestions=(comparison.items||[]).filter(item=>['suggested','conflict'].includes(item.status)&&module.decisions?.[item.key]!=='keep');
+  const item=suggestions[0];
+  if(item){
+    const input=node('input',{type:'text',inputmode:'decimal',value:item.suggested_value??item.current_value,'aria-label':item.label+'数值'}),error=node('p',{class:'entry-error',role:'alert'});
+    let timer;input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>previewDimension(module,item.key,input.value,item.unit==='deg'?'deg':'mm').then(()=>error.textContent='').catch(e=>error.textContent=e.message),400);});
+    const commit=async()=>{clearTimeout(timer);await confirmModuleTarget(module,item.key,input.value,item.unit==='deg'?'deg':'mm');};
+    input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();commit().catch(report);}if(event.key==='Escape'){clearTimeout(timer);dismissProposal().catch(report);}});
+    page.append(node('section',{class:'fit-decision'},node('span',{class:'eyebrow'},'待处理 '+suggestions.length+' 项'),node('h3',{},item.label),paragraph(item.reason),node('label',{class:'dimension-control'},'当前 '+item.current_value+(item.unit==='deg'?'°':' mm'),input),error,node('div',{class:'action-row'},button('保持原样',async()=>{if(state.proposal?.dimensionEdit)await dismissProposal();await mutate({modules:(comparison.advice_modules||state.project.modules).map(m=>m.id===module.id?{...m,decisions:{...m.decisions,[item.key]:'keep'}}:m)});},'quiet'),button('下一个 →',commit,'primary'))));
+  }else page.append(paragraph(activeRun()&&['waiting_for_session','running'].includes(activeRun().status)?'正在等待有依据的调整建议，当前模型保持原样。':comparison.summary||'根据现有数据，暂不建议自动调整。你仍可点击模型尺寸修改。'),button('保持当前设计，继续 →',acceptCurrentDimensions,'primary'));
+  const details=node('details',{class:'optional-controls'},node('summary',{},'尺寸与依据'));
+  for(const row of comparison.items||[])details.append(node('div',{class:'fit-evidence-row'},node('strong',{},row.label+' · '+row.current_value+(row.unit==='deg'?'°':' mm')),node('small',{},row.reason),button('在模型上调整',()=>openDimensionEditor(module,row.key),'quiet',!row.editable)));
+  page.append(details);
+  return page;
 }
-function moduleConfirmationCard(module,calculations){
-  const target=module.target||{},confirmations=module.confirmations||{},pending=confirmationItems.find(([key])=>!confirmations[key]);
-  const card=node('section',{class:'confirmation-card'},node('div',{class:'fit-card-heading'},node('div',{},node('span',{class:'eyebrow'},'逐项确认'),node('strong',{},pending?'待确认 1 / '+confirmationItems.length:'已完成逐项确认')),node('span',{class:'fit-note'},pending?'一次确认一项':'全部已确认')));
-  if(!pending){card.append(paragraph('每个尺寸都已单独确认。后续修改人体数据或模型后，会重新进入待确认。'));return card;}
-  const [key,label,formula]=pending,result=calculations[key],value=result?.value??target[key]??'';
-  const unit=key==='back_angle_deg'?'°':'mm',input=node('input',{type:'number',min:'1',step:'1',value:value?Math.round(value):'', 'aria-label':label+'数值'});
-  card.append(node('p',{class:'confirmation-question'},'现在确认：'+label),node('div',{class:'confirmation-value'},input,node('span',{},unit)),node('p',{class:'fit-note'},'依据：'+(result?.formula||formula)),button('确认这个尺寸',()=>confirmModuleTarget(module,key,input.value,'mm'),'primary',state.busy),paragraph('确认后自动进入下一项；这不是安全或承载结论，仍需试用和复核。'));
-  return card;
+async function loadFitComparison(){
+  const module=state.project?.modules?.[0];state.fitComparison=null;state.fitComparisonError='';if(!module)return;
+  const projectId=state.project.id,revision=state.project.revision;
+  try{const result=await api(base()+'/modules/'+encodeURIComponent(module.id)+'/comparison');if(state.project.id===projectId&&state.project.revision===revision)state.fitComparison=result;}
+  catch(error){state.fitComparisonError=error.message;}
 }
 function modelDimensionFacts() {
   const parts=displayProject().parts||[],seat=parts.filter(p=>p.kind==='seat_board'),facts=[];
@@ -307,20 +423,13 @@ function modelDimensionFacts() {
   return host;
 }
 async function acceptCurrentDimensions() {
-  requireNoProposal();if(pendingRequest())throw new Error('先处理当前调整要求，再确认尺寸。');if(state.fitDraft.trim())throw new Error('先提交调整要求，或清空输入后沿用当前尺寸。');
+  requireNoProposal();if(state.fitDraft.trim())throw new Error('先提交调整要求，或清空输入后沿用当前尺寸。');
   const p=state.project;if(!p.parts?.length)throw new Error('先形成参考模型。');
-  if(!p.scale?.confirmed)await mutate({scale:{kind:p.scale?.kind||'target',length_mm:p.scale?.length_mm||null,note:p.scale?.note||'采用当前模型各零件尺寸作为本次制作尺寸。',confirmed:true}},false);
+  state.dirtyForms=false;
   goTask('make');
 }
 async function requestFit(text) {
-  requireNoProposal();if(state.busy)throw new Error('正在保存，请稍后再试。');
-  await guarded(async()=>{
-    const result=await api(base()+'/interaction',json('POST',{expected_revision:state.project.revision,text,selected_part_id:state.selectedId,stage:'fit'}));
-    state.fitDraft='';state.dirtyForms=false;state.conversationOpen=false;
-    if(result.proposal)state.proposal=result.proposal;
-    await refreshData();state.activeTask='fit';setPanel('tasks',true);render();
-    if(result.kind==='reply')notice(result.reply);
-  });
+  await createDesignRun('modify',text+'。结合个人数据与原版基线，通过 Module.suggestions 返回有依据的最小必要调整建议，不直接替换模型。');state.fitDraft='';persistDrafts();render();
 }
 function proposalImportControl() {
   return node('details',{class:'optional-controls'},node('summary',{},'其他操作'),button('导入设计候选',chooseProposalFile,'',!!state.proposal));
@@ -353,38 +462,50 @@ function renderQuestion(body,question) {
   body.append(card);
 }
 function renderMakeTask(body) {
-  const question=state.preparation?.missing_questions?.[0];
-  if(question){body.append(paragraph('先补齐制作条件，再确定材料、连接和装配做法。'));renderQuestion(body,question);return;}
-  renderConfirmTask(body);
+  const p=state.project,currentRun=runCard();if(currentRun)body.append(currentRun);
+  if(state.proposal){body.append(paragraph('修改已显示在模型上，采用后继续。'));return;}
+  const mode=field('由谁加工','fabrication_mode',p.fabrication_mode||'shop','text',[['shop','加工店制件，自己装配'],['self','自己加工']]);
+  mode.querySelector('select').addEventListener('change',event=>mutate({fabrication_mode:event.target.value}).catch(report));body.append(mode);
+  const part=p.parts.find(part=>part.id===state.selectedId)||p.parts.find(part=>part.kind==='seat_board')||p.parts[0];
+  if(part){
+    const select=node('select',{'aria-label':'选择修改部件'},p.parts.map(item=>node('option',{value:item.id,selected:item.id===part.id},item.name)));
+    select.addEventListener('change',()=>{state.selectedId=select.value;state.viewport?.setSelection(select.value);renderTasks();renderDimensionLabels();});body.append(select);
+    const material=p.materials[part.material_id],materialName=node('input',{value:material?.name||'','aria-label':'材料名称'});
+    const thickness=node('input',{type:'text',inputmode:'decimal',value:part.size_mm[1],'aria-label':'板材厚度'});
+    const form=node('form',{'data-flow-draft':'methods',class:'method-editor'},node('label',{class:'field'},'材料',materialName),node('label',{class:'field'},'板厚 · mm',thickness));
+    const error=node('p',{class:'entry-error',role:'alert'}),submit=node('button',{type:'submit',class:'primary'},'预览做法调整');
+    form.append(error,submit);form.addEventListener('submit',async event=>{event.preventDefault();try{const value=parseQuantity(thickness.value);await createDesignRun('modify','修改部件 '+part.id+'（'+part.name+'）的材料为 '+materialName.value+'，板厚为 '+value+' mm。保留原设计关系，联动重建孔位、连接和五金，检查后返回预览。');}catch(exc){error.textContent=exc.message;}});body.append(form);
+    const joint=p.joints.find(j=>j.part_ids.includes(part.id));
+    if(joint)body.append(node('div',{class:'method-connection'},node('strong',{},jointName(joint)),paragraph(joint.assembly_note||'沿用当前连接'),button('在模型中查看',()=>inspectJoint(joint.id),'quiet'),button('调整连接方式',()=>createDesignRun('modify','为 '+jointName(joint)+' 提出受支持的替代连接方案，说明外观和拆装差异，需要取舍时先询问用户。'),'quiet')));
+  }
+  body.append(button('沿用当前做法，生成加工包 →',enterPackageFlow,'primary',state.busy));
 }
 async function requestPreparation(text='',stage='manufacturing') {
-  if(state.busy)throw new Error('正在保存上一项，请稍候再提交。');
-  requireNoProposal();
-  await guarded(async()=>{await api(base()+'/preparation/request',json('POST',{expected_revision:state.project.revision,text,stage}));await refreshData();setPanel('tasks',true);render();notice('需求已保存，下一步说明留在当前任务中。');});
+  await createDesignRun(stage==='reference'?'reconstruct':'modify',text||'检查当前做法，补齐有依据的材料、连接与加工方案。');
 }
 function partName(id) { return (displayProject().parts||[]).find(part=>part.id===id)?.name||id; }
 function jointName(joint) { return joint.name||(joint.part_ids||[]).map(partName).join(' ↔ '); }
-function packagePreview() {return state.proposal?state.proposal.package_preview:state.preparation?.package_preview;}
+function packagePreview() {
+  if(state.proposal)return state.proposal.package_preview;
+  const pkg=state.preparation?.package_preview;
+  return pkg?.revision===state.project?.revision?pkg:null;
+}
 function showList(mode) {showPage('design');setPanel('context',true);clearInspection(false);state.tab='lists';state.listMode=mode;renderContext();}
-function clearInspection(redraw=true) {state.inspectedJointId=null;$('selection-label').textContent=displayProject()?.parts?.find(p=>p.id===state.selectedId)?.name||'尚未选择部件';state.viewport?.setExploded(false);state.viewport?.clearInspection();renderModelGuide();if(redraw)renderContext();}
+function clearInspection(redraw=true) {const prior=state.inspectionReturn;state.inspectionReturn=null;state.inspectedJointId=null;state.viewport?.setExploded(false);state.viewport?.clearInspection();if(prior){state.selectedId=prior.selectedId;state.viewport?.setSelection(prior.selectedId);state.viewport?.restoreView(prior.view);}$('selection-label').textContent=displayProject()?.parts?.find(p=>p.id===state.selectedId)?.name||'尚未选择部件';renderModelGuide();if(redraw)renderContext();}
 function inspectJoint(id) {
   showPage('design');
   const joint=(displayProject().joints||[]).find(item=>item.id===id);if(!joint)return;state.conversationOpen=false;renderConversation();
-  if(compactLayout.matches){setPanel('tasks',false);setPanel('context',false);}else setPanel('context',true);
-  state.selectedId=null;state.viewport?.setSelection(null);$('selection-label').textContent=jointName(joint);state.inspectedJointId=id;state.tab='lists';state.listMode='joints';
+  state.inspectionReturn=state.inspectionReturn||{selectedId:state.selectedId,view:state.viewport?.captureView?.()};
+  state.selectedId=joint.part_ids[0];state.viewport?.setSelection(state.selectedId);$('selection-label').textContent=jointName(joint);state.inspectedJointId=id;
   state.viewport?.setTool('select');document.querySelectorAll('[data-tool]').forEach(el=>el.classList.toggle('active',el.dataset.tool==='select'));
-  state.viewport?.inspectConnection(joint.part_ids,joint.feature_ids||[],joint.id);state.viewport?.setExploded(true);renderContext();renderModelGuide();
+  state.viewport?.setExploded(false);state.viewport?.highlightParts?.(joint.part_ids);renderModelGuide();
 }
 function renderModelGuide() {
-  const host=$('model-guide');if(!host)return;
-  const joints=displayProject()?.joints||[],index=joints.findIndex(j=>j.id===state.inspectedJointId),joint=joints[index];
-  host.classList.toggle('hidden',!joint);host.replaceChildren();renderShortcuts();if(!joint)return;
-  const previous=button('←',()=>inspectJoint(joints[index-1].id),'',index===0);previous.setAttribute('aria-label','上一处连接');
-  const next=button(index===joints.length-1?'完成 ✓':'下一处 →',()=>index===joints.length-1?clearInspection():inspectJoint(joints[index+1].id),'primary');
-  const details=button('细节',()=>setPanel('context',true),'quiet');details.setAttribute('aria-label','查看连接资料');
-  const explode=button(state.viewport?.exploded?'收拢':'展开',()=>{state.viewport?.setExploded(!state.viewport?.exploded);renderContext();renderModelGuide();},'quiet');explode.setAttribute('aria-label',state.viewport?.exploded?'收拢连接':'展开连接');
-  const close=button('×',()=>clearInspection(),'quiet');close.setAttribute('aria-label','结束连接查看');
-  host.append(node('div',{class:'guide-copy'},node('span',{class:'guide-count'},'连接图 · '+(index+1)+' / '+joints.length),node('strong',{},jointName(joint))),node('div',{class:'guide-nav'},previous,next,explode,details,close));
+  const host=$('model-guide');host.replaceChildren();renderShortcuts();
+  const show=state.page==='design'&&!state.sidebarOpen&&!state.conversationOpen&&!!state.project?.parts?.length;host.classList.toggle('hidden',!show);if(!show)return;
+  const task=tasks.find(([id])=>id===state.activeTask);
+  host.append(node('div',{class:'guide-copy'},node('strong',{},state.inspectedJointId?'已定位相关连接':task?.[2]||'继续设计')),button('打开当前步骤',()=>{setPanel('tasks',true);render();},'primary'));
+  if(state.inspectedJointId)host.append(button('返回原视角',()=>clearInspection(),'quiet'));
 }
 function renderShortcuts() {
   const host=$('command-suggestions');if(!host)return;host.replaceChildren();
@@ -399,104 +520,82 @@ function renderPlanPreview(body,pkg) {
   fasteners.append(hardwareGlyph({geometry:{kind:'bolt'}}),node('strong',{},hardware.reduce((sum,item)=>sum+item.quantity,0)),node('span',{},'五金'));
   facts.append(boards,fasteners);body.append(facts);
 }
-function renderConfirmTask(body) {
-  const p=state.project,proposal=state.proposal,pkg=packagePreview(),blockers=displayChecks().filter(x=>x.severity==='blocker');
-  const confirmed=!proposal&&p.confirmed_revision===p.revision,hasAssembly=!!displayProject().joints?.length;
-  const question=state.preparation?.missing_questions?.[0];
-  body.append(node('div',{class:'guide-intro'},node('span',{class:'guide-spark','aria-hidden':'true'},confirmed?'✓':'✦'),node('div',{},node('h2',{},confirmed?'设计资料已确认':hasAssembly?'看图装起来':'把做法补齐'),node('p',{},confirmed?'查看采购、加工与装配资料；未覆盖的工程事项仍需核对。':hasAssembly?'展开连接，看清零件和五金的位置。':'按现有尺寸，设定材料、连接与装配。'))));
-  if(question&&!proposal)renderQuestion(body,question);
-  renderPlanPreview(body,pkg);
-  if(hasAssembly)body.append(button('查看装配爆炸图',()=>inspectJoint(displayProject().joints[0].id),'primary guide-start'));
-  if(!confirmed&&(!hasAssembly||blockers.length))body.append(button(hasAssembly?'完善加工方案':'设定加工方案',()=>requestPreparation('按当前尺寸和使用条件，完成选材、连接、孔位、五金与装配设定。'),hasAssembly?'quiet':'primary guide-start',!!proposal||!!question||state.preparation?.request?.status==='pending'));
-  const documents=node('div',{class:'guide-documents'});
-  documents.append(button('一页开工总览 ↗',openOverview,'',!pkg?.drawings?.some(sheet=>sheet.sheet_type==='assembly_overview')),button('完整设计包',openPackage,'quiet',!!proposal||!p.parts?.length));body.append(documents);
-  if(!confirmed)body.append(button(blockers.length?'查看 '+blockers.length+' 项检查':'确认这版设计',()=>showList('review'),'quiet review-final',!!proposal));
-  if(state.preparation?.request?.status==='pending')body.append(node('div',{class:'request-status'},'要求已记录',button('刷新方案',refreshFromSession,'quiet',!!proposal||state.dirtyForms)));
-  const conditions=node('details',{class:'optional-controls'},node('summary',{},'使用条件'),conditionSummary());
-  conditions.append(button('调整尺寸',()=>{state.activeTask='fit';clearInspection(false);renderTasks();focusTask('fit');},'quiet',!!proposal),button('调整加工条件',()=>{state.activeTask='make';clearInspection(false);renderTasks();},'quiet',!!proposal));body.append(conditions);
-}
+function renderConfirmTask(body) { renderReview(body); }
 function renderReview(content) {
-  const p=state.project,checks=displayChecks(),blockers=checks.filter(x=>x.severity==='blocker'),coverage=displayCoverage();
-  content.append(node('h3',{},'确认这一版'),paragraph('v'+p.revision+' · '+p.parts.length+' 件 · '+p.joints.length+' 处连接'));
-  if(blockers.length)content.append(blockers.map(issueCard));
-  const detail=node('details',{class:'optional-controls'},node('summary',{},'检查结果与范围'),checks.filter(x=>x.severity!=='blocker').map(issueCard));
-  if(coverage.checked?.length)detail.append(paragraph('已检查：'+coverage.checked.join('；')));
-  if(coverage.not_checked?.length)detail.append(paragraph('未计算 / 未验证：'+coverage.not_checked.join('；')));
-  content.append(detail);
-  if(p.assumptions?.length)content.append(node('details',{class:'optional-controls'},node('summary',{},'设计设定'),node('ul',{},p.assumptions.map(item=>node('li',{},item)))));
-  const ack=boolField('已核对设计、检查结果与设计设定','acknowledged',p.acknowledged_limits);content.append(ack);
-  content.append(button(p.confirmed_revision===p.revision?'✓ 已确认':'确认设计，准备出包',async()=>{if(state.proposal)throw new Error('请先采用或取消当前方案。');if(!ack.querySelector('input').checked)throw new Error('请先核对设计与检查结果。');await guarded(async()=>{state.project=await api(base()+'/confirm',json('POST',{expected_revision:state.project.revision,acknowledged_limits:true}));await refreshData();render();notice('设计已确认，可以生成加工资料。');});},'primary',blockers.length>0||!!state.proposal||p.confirmed_revision===p.revision));
+  if(state.checksError){content.append(paragraph('检查暂时未完成，请重试。'),button('重新检查',async()=>{await refreshData();renderContext();}));return;}
+  if(displayChecks().some(check=>check.code==='scale_unconfirmed'&&check.severity==='blocker')){renderScaleAnchor(content);return;}
+  const editPart=id=>{clearInspection(false);state.selectedId=id;state.viewport?.focus(id);state.tab='layers';setPanel('context',true);renderContext();};
+  renderReviewFlow(content,{
+    project:state.project,checks:displayChecks(),coverage:displayCoverage(),packagePreview:packagePreview(),busy:state.busy||!!state.proposal,
+    onInspect:({partIds,jointId})=>jointId?inspectJoint(jointId):editPart(partIds[0]),
+    onEditPart:editPart,onReturnToFit:()=>goTask('fit'),
+    onResolve:check=>requestPreparation('请解决当前检查问题：'+(check?.message||'补齐设计信息')).catch(report),
+    onRefresh:async()=>{await refreshData();renderContext();},
+    onAcceptJoint:async jointId=>{requireNoProposal();await guarded(async()=>{state.project=await api(base()+'/joints/'+encodeURIComponent(jointId)+'/accept',json('POST',{expected_revision:state.project.revision}));state.dirtyForms=false;await refreshData();render();});},
+    onConfirmPackage:openPackage
+  });
+}
+
+function renderScaleAnchor(host){
+  const input=node('input',{type:'text',inputmode:'decimal','aria-label':'参考中的实测尺寸',placeholder:'例如 400 mm'}),note=node('input',{type:'text','aria-label':'尺寸依据',placeholder:'这个尺寸来自哪里、对应哪里？'}),error=node('p',{class:'entry-error',role:'alert'});
+  host.append(node('h3',{},'补充一个有依据的尺寸'),paragraph('填写参考图纸、产品说明或实际测量中的尺寸。程序会核对它与模型是否一致。'),input,note,error,button('保存尺寸依据',async()=>{try{state.project=await api(base()+'/scale-anchor',json('POST',{expected_revision:state.project.revision,length_mm:parseQuantity(input.value),note:note.value.trim()}));state.dirtyForms=false;await refreshData();render();}catch(exc){error.textContent=exc.message;}},'primary'));
 }
 
 async function refreshFromSession() {
   if(state.busy||state.proposal||state.dirtyForms||!state.project)return;
-  await guarded(async()=>{const current=await api(base());state.project=current;await refreshData();await recoverProposal();if(state.proposal?.purpose==='manufacturing')state.activeTask='confirm';render();});
+  await guarded(async()=>{const current=await api(base());state.project=current;await refreshData();await recoverProposal();await refreshDesignRun();render();});
 }
 function issueCard(check) {return node('div',{class:'issue '+(check.severity==='blocker'?'':check.severity==='warning'?'warning':'pass')},node('strong',{},check.severity==='blocker'?'设计检查':check.severity==='warning'?'提醒':'已记录'),check.message,(check.part_ids||[]).map(id=>button('定位 '+partName(id),()=>{clearInspection(false);state.selectedId=id;state.viewport?.focus(id);state.tab='layers';setPanel('context',true);renderContext();})));}
 function renderGenerationControls() {
-  const start=$('empty-reference-start');
-  start.disabled=state.busy||state.generating||!!state.proposal||(!state.referenceDraft.trim()&&!state.project?.references?.length);
-  start.textContent=state.generating?'正在生成模型…':state.aiStatus?.ready?'生成可编辑模型 →':pendingRequest()?'查看 / 更新设计请求 →':'提交设计请求 →';
-  $('quick-reference-error').textContent=state.generationError;
-  $('ai-settings').textContent='设置';
+  const start=$('empty-reference-start');start.disabled=state.busy||state.generating||!!state.proposal||(!state.referenceDraft.trim()&&!state.project?.references?.length);
+  start.textContent=state.generating?'正在提交…':activeRun()?'已提交，等待当前会话':'提交给当前聊天处理 →';
+  $('quick-reference-error').textContent=state.generationError;$('ai-settings').textContent='设置';
 }
 function renderCandidateActions() {
-  const host=$('candidate-actions'),p=state.proposal;host.replaceChildren();host.hidden=p?.status!=='ready';
-  if(host.hidden)return;
-  const blockers=(p.checks||[]).filter(x=>x.severity==='blocker').length;
-  host.append(node('div',{},node('strong',{},p.source==='demo'?'CAFE CHAIR · 样例候选':p.source==='prototype'?'本地原型候选 · 木质餐椅':'模型候选 · 等待你采用'),node('small',{},(p.patch.parts?.length||state.project.parts.length)+' 个部件 · '+blockers+' 项待完善')),button('采用模型',acceptProposal,'primary',state.busy),button('不采用',dismissProposal,'',state.busy),button('查看依据与检查',()=>setPanel('tasks',true),'quiet'));
+  const host=$('candidate-actions'),p=state.proposal;host.replaceChildren();host.hidden=p?.status!=='ready'||!!p?.dimensionEdit;if(host.hidden)return;
+  const first=!state.project.parts?.length,conflict=p.preservation_conflict;
+  host.append(node('div',{},node('strong',{},first?'这是你想复原的椅子吗？':conflict?'这项修改会改变原设计':'修改预览'),node('small',{},conflict||p.summary||'在模型上查看变化')));
+  if(conflict)host.append(button('作为改款预览',async()=>{state.proposal=await api(base()+'/proposal/'+p.id+'/redesign',json('POST',{expected_revision:state.project.revision}));render();},'primary',state.busy));
+  else host.append(button(first?'继续 →':'采用修改',acceptProposal,'primary',state.busy));
+  host.append(button(first?'哪里不像':'取消',async()=>{await dismissProposal();if(first){state.activeTask='reference';state.referenceDraft='这版与参考不同的地方是：';setPanel('tasks',true);renderTasks();const details=$('task-list').querySelector('.optional-controls');if(details)details.open=true;$('task-list').querySelector('textarea')?.focus();}},'quiet',state.busy));
 }
 async function beginGeneration() {
-  requireNoProposal();if(state.busy)return;
-  state.generationError='';
   try {if(state.referenceDraft.trim())await saveReferenceText(state.referenceDraft);await generateModel();}
   catch(error){state.generationError=error.message;render();}
 }
-async function generateModel() {
-  requireNoProposal();if(state.busy)return;
+async function generateModel(){
   if(!state.project.references?.length)throw new Error('先添加图片、链接或文字参考。');
-  state.generating=true;render();
-  const projectId=state.project.id,revision=state.project.revision;
-  try {
-    await guarded(async()=>{
-      const result=await api('/projects/'+projectId+'/analyze',json('POST',{expected_revision:revision}));
-      if(state.project.id!==projectId||state.project.revision!==revision)throw new Error('项目已变化，请刷新后重新生成。');
-      state.activeTask='reference';state.conversationOpen=false;
-      if(result.status==='ready'){state.proposal=result;state.generationError='';setPanel('tasks',!compactLayout.matches);}
-      else if(result.status==='handoff'){state.generationError='';setPanel('tasks',false,{persist:false});}
-      else {state.generationError=result.error||'未生成候选，请重试或使用会话协作。';setPanel('tasks',false,{persist:false});}
-      await refreshData();render();
-    });
-  } finally {state.generating=false;render();}
+  await createDesignRun('reconstruct','根据已提供参考复原椅子，保留形态、比例与结构，给出默认做法及有依据的保型关系。');
 }
-async function runAnalysis() {return beginGeneration();}
+async function runAnalysis(){return beginGeneration();}
 async function openCafeDemo() {
   if(state.busy||state.dirtyForms)throw new Error('请先保存正在编辑的条件。');persistDrafts();
   await guarded(async()=>{
     const result=await api('/demos/cafe-chair',{method:'POST'});
     state.project=result.project;state.referenceDraft='';state.fitDraft='';state.commandDraft='';$('command-input').value='';showPage('design');state.proposal=result.proposal;state.selectedId=null;state.activeTask='reference';state.generationError='';state.conversationOpen=false;
     localStorage.setItem('junior-project-id',state.project.id);
-    await listProjects();await refreshData();setPanel('tasks',!compactLayout.matches);render();
+    await listProjects();await refreshData();setPanel('tasks',false);render();
   });
 }
 async function openAiSettings() {
   state.aiStatus=await api('/ai/status');
   const status=state.aiStatus,host=$('ai-settings-content');host.replaceChildren();
-  host.append(node('p',{},'当前通道：'+status.label),node('h3',{},'会话协作 · 无需密钥'),paragraph('提交设计请求后，把交接文字发给当前聊天。我整理并导入候选，页面会显示模型。网页不会自动调用这段聊天。'),node('h3',{},'样例体验 · 立即看到模型'),paragraph('使用首页的“体验 CAFE CHAIR 样例”，新建独立项目体验编辑、检查和图纸。不会声称识别了你的参考。'),node('h3',{},'在线 AI · 自动生成'),paragraph('在项目目录的 .env 中填写以下配置；使用支持图片和 JSON 输出的模型。密钥只存服务端，不填入网页。'),node('pre',{class:'setup-code'},'CREATE_JUNIOR_AI_PROVIDER=openai_compatible\nCREATE_JUNIOR_AI_BASE_URL=https://你的服务地址/v1\nCREATE_JUNIOR_AI_API_KEY=你的密钥\nCREATE_JUNIOR_AI_MODEL=服务商提供的视觉模型名称'),paragraph('保存后重启本地服务：'),node('pre',{class:'setup-code'},'uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --env-file .env'),paragraph('填写状态：'+Object.entries(status.configured).map(([key,ok])=>key+' '+(ok?'已填写':'未填写')).join(' · ')));
+  host.append(node('p',{},'当前通道：'+status.label),node('h3',{},'会话协作 · 无需密钥'),paragraph('提交后，把交接文字发给当前聊天。聊天返回模型后，页面会显示出来。网页不会自动调用这段聊天。'),node('h3',{},'样例体验 · 立即看到模型'),paragraph('使用首页的“体验 CAFE CHAIR 样例”，新建独立项目体验编辑、检查和图纸。不会声称识别了你的参考。'),node('h3',{},'在线 AI · 自动生成'),paragraph('在项目目录的 .env 中填写以下配置；使用支持图片和 JSON 输出的模型。密钥只存服务端，不填入网页。'),node('pre',{class:'setup-code'},'CREATE_JUNIOR_AI_PROVIDER=openai_compatible\nCREATE_JUNIOR_AI_BASE_URL=https://你的服务地址/v1\nCREATE_JUNIOR_AI_API_KEY=你的密钥\nCREATE_JUNIOR_AI_MODEL=服务商提供的视觉模型名称'),paragraph('保存后重启本地服务：'),node('pre',{class:'setup-code'},'uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --env-file .env'),paragraph('填写状态：'+Object.entries(status.configured).map(([key,ok])=>key+' '+(ok?'已填写':'未填写')).join(' · ')));
   $('ai-dialog').showModal();renderGenerationControls();
 }
 async function acceptProposal() {
   const proposal=state.proposal;if(!proposal)return;
-  if(proposal.base_revision!==state.project.revision)throw new Error('提案基于旧版本，不能应用到当前设计；请取消并重新生成。');
+  if(proposal.base_revision!==state.project.revision)throw new Error('这版修改基于旧版本，不能用于当前设计；请取消后重新生成。');
   if(proposal.local){await mutate(proposal.patch,false,proposal.base_revision);return;}
-  await guarded(async()=>{state.project=await api(base()+'/proposal/accept',json('POST',{expected_revision:state.project.revision,proposal_id:proposal.id,accept_connections:proposal.purpose==='manufacturing'}));state.proposal=null;state.dirtyForms=false;await refreshData();state.activeTask=nextTask();setPanel('tasks',true);render();});
+  const first=!state.project.parts.length;
+  await guarded(async()=>{state.project=await api(base()+'/proposal/accept',json('POST',{expected_revision:state.project.revision,proposal_id:proposal.id,accept_connections:true}));state.proposal=null;state.dirtyForms=false;if(first){state.project=await api(base()+'/baseline',json('POST',{expected_revision:state.project.revision}));state.activeTask='fit';setPanel('tasks',true);}await refreshData();render();});
 }
 async function stagePatch(patch,summary) {
-  if(state.busy || state.proposal){notice(state.busy?'正在保存，请稍候。':'请先接受或取消当前修改。');render();return;}
+  if(state.busy || state.proposal){notice(state.busy?'正在保存，请稍候。':'请先采用或取消当前修改。');render();return;}
   try {
     await guarded(async()=>{
       state.proposal=await api(base()+'/proposal/import',json('POST',{expected_revision:state.project.revision,summary,patch,purpose:'design'}));
-      setPanel('tasks',true);state.dirtyForms=false;render();
+      state.dirtyForms=false;render();
     });
   } catch(error) {render();throw error;}
 }
@@ -508,19 +607,26 @@ async function uploadFiles(files) {
   if(refs.filter(r=>(r.kind||'image')==='image').length+files.filter(f=>f.type!=='application/pdf').length>8)throw new Error('每个项目最多保存8张图片。');
   if(files.some(file=>file.size>10*1024*1024))throw new Error('每份文件最多10 MB。');
   if(files.some(file=>!types.includes(file.type)))throw new Error('支持 JPG、PNG、WebP 和 PDF。');
-  await guarded(async()=>{for(const file of files)state.project=await api(base()+'/references?filename='+encodeURIComponent(file.name),{method:'POST',headers:{'content-type':file.type},body:file});state.proposal=null;state.dirtyForms=false;await refreshData();state.activeTask='reference';state.tab='references';state.conversationOpen=false;setPanel('tasks',!!state.project.parts?.length,{persist:false});render();notice('参考已收到。');});
+  await guarded(async()=>{for(const file of files)state.project=await api(base()+'/references?filename='+encodeURIComponent(file.name),{method:'POST',headers:{'content-type':file.type},body:file});state.proposal=null;state.dirtyForms=false;await refreshData();state.activeTask='reference';state.tab='references';state.conversationOpen=false;render();});
+  if(!state.project.parts.length)await generateModel();
 }
 function openReferenceComposer(initial='') {
   requireNoProposal();$('reference-text').value=initial;$('reference-error').textContent='';$('reference-dialog').showModal();$('reference-text').focus();
 }
 async function saveReferenceText(text) {
   requireReferenceEdit();text=text.trim();if(!text)throw new Error('粘贴一个链接，或写下参考说明。');
-  const isLink=/^https?:\/\/\S+$/i.test(text);
+  const linkMatch=/(?:^|\s)(https?:\/\/\S+)(?=\s|$)/i.exec(text),url=linkMatch?.[1];
+  const isLink=!!url,note=isLink?(text.slice(0,linkMatch.index)+text.slice(linkMatch.index+linkMatch[0].length)).trim():text;
   if(/^[a-z][a-z0-9+.-]*:\/\//i.test(text)&&!isLink)throw new Error('链接请使用完整的 http 或 https 地址。');
+  if(state.project.references.length+(isLink&&note?2:1)>20)throw new Error('每个项目最多保存 20 条参考资料，链接与制作想法会分别保存。');
   let added;
   await guarded(async()=>{
-    state.project=await api(base()+'/references/item',json('POST',{expected_revision:state.project.revision,kind:isLink?'link':'note',...(isLink?{url:text}:{text})}));
-    added=state.project.references.at(-1);state.referenceDraft='';state.dirtyForms=false;state.conversationOpen=false;await refreshData();state.activeTask='reference';setPanel('tasks',!!state.project.parts?.length,{persist:false});render();
+    state.project=await api(base()+'/references/item',json('POST',{expected_revision:state.project.revision,kind:isLink?'link':'note',...(isLink?{url}:{text:note})}));
+    added=state.project.references.at(-1);
+    // Link resolution replaces extracted page text, so keep the user's own idea
+    // as a separate note that remains intact when the page is read again.
+    if(isLink&&note)state.project=await api(base()+'/references/item',json('POST',{expected_revision:state.project.revision,kind:'note',name:'制作想法',text:note}));
+    state.referenceDraft='';state.dirtyForms=false;state.conversationOpen=false;await refreshData();state.activeTask='reference';setPanel('tasks',!!state.project.parts?.length,{persist:false});render();
   });
   render();
   if(isLink&&added)await resolveReference(added.id);
@@ -564,17 +670,17 @@ function renderVersions(content) {
   content.append(node('h3',{},'设计版本'),paragraph('修改会保存新版本，旧确认不会沿用。恢复也会创建新版本。'));
   for(const version of [...state.versions].sort((a,b)=>b.revision-a.revision))content.append(node('div',{class:'version-card'},node('strong',{},'v'+version.revision+' · '+(version.name||state.project.name)),node('small',{},version.confirmed?'已确认快照':'设计草稿'),version.revision===state.project.revision?node('span',{class:'tag'},'当前'):button('恢复此版本',()=>restoreVersion(version.revision))));
 }
-async function restoreVersion(revision) {await guarded(async()=>{state.project=await api(base()+'/restore/'+revision,json('POST',{expected_revision:state.project.revision}));state.proposal=null;await refreshData();state.activeTask=nextTask();setPanel('tasks',true);render();notice('已恢复为新的草稿版本。');});}
+async function restoreVersion(revision) {await guarded(async()=>{state.project=await api(base()+'/restore/'+revision,json('POST',{expected_revision:state.project.revision}));state.proposal=null;await refreshData();render();notice('已恢复为新的设计版本。');});}
 function selectPart(id,{focus=false}={}) {
   clearInspection(false);state.selectedId=id;state.viewport?.setSelection(id);
   const part=displayProject()?.parts?.find(part=>part.id===id);
   $('selection-label').textContent=part?.name||'尚未选择部件';
-  if(part){setPanel('context',true);state.tab='layers';if(focus)state.viewport?.focus(id);}
-  renderContext();
+  if(part){state.tab='layers';if(focus)state.viewport?.focus(id);}
+  renderContext();renderDimensionLabels();
 }
 function renderLayers(content) {
   const project=displayProject(),parts=project.parts||[],part=parts.find(item=>item.id===state.selectedId);
-  if(!parts.length){content.append(node('div',{class:'empty-note'},'接受参考结构后，部件会出现在这里。'));return;}
+  if(!parts.length){content.append(node('div',{class:'empty-note'},'有了第一版模型后，部件会出现在这里。'));return;}
   if(part){
     const inspector=node('section',{class:'part-inspector','aria-label':'选中部件属性'});
     inspector.append(node('span',{class:'eyebrow'},'选中部件'),node('h2',{},part.name),node('div',{class:'spec-chips'},node('span',{class:'chip'},project.materials?.[part.material_id]?.name||'材料'),node('span',{class:'chip'},(part.features?.length||0)+' 处加工')));
@@ -661,8 +767,8 @@ function grainDirectionGraphic(part) {
 }
 function renderLists(content) {
   const p=displayProject(),pkg=packagePreview();
-  content.append(node('div',{class:'list-tabs'},[['joints','连接'],['cut','下料'],['hardware','五金'],['review','核对']].map(([mode,label])=>button(label,()=>showList(mode),state.listMode===mode?'active':''))));
   if(state.listMode==='review'){renderReview(content);return;}
+  content.append(node('div',{class:'list-tabs'},[['joints','连接'],['cut','下料'],['hardware','五金'],['review','核对']].map(([mode,label])=>button(label,()=>showList(mode),state.listMode===mode?'active':''))));
   if(state.listMode==='hardware'){
     content.append(node('h3',{},'五金 · 汇总采购'));
     content.append(node('div',{class:'hardware-inventory'},(pkg?.hardware||[]).map(hardwareTile)));
@@ -735,40 +841,75 @@ function openOverview() {
   if(index>=0)openDrawingViewer(sheets,index,drawingViewerOptions());
 }
 
+async function enterPackageFlow() {
+  requireNoProposal();if(state.dirtyForms)throw new Error('先保存或取消当前输入，再生成加工包。');
+  await refreshData();
+  if(displayChecks().some(item=>item.severity==='blocker')){state.activeTask='confirm';state.sidebarMode='tasks';setPanel('tasks',true);render();return;}
+  await openPackage();
+}
 async function openPackage() {
-  if(state.dirtyForms)throw new Error('先保存正在编辑的条件，再查看制作包。');
-  if(state.proposal)throw new Error('先采用或取消当前候选，再查看当前设计的制作包。');
-  const projectId=state.project.id,revision=state.project.revision;
-  const pkg=await api('/projects/'+projectId+'/package');
-  if(state.project.id!==projectId||state.project.revision!==revision)throw new Error('设计已变化，请重新打开制作包。');
-  state.packageSnapshot={project:clone(state.project),pkg};
-  showPage('package');renderPackagePage();
+  requireNoProposal();if(state.dirtyForms)throw new Error('先保存或取消正在编辑的内容。');
+  const projectId=state.project.id,revision=state.project.revision,capturedProject=clone(state.project);
+  await guarded(async()=>{
+    const exported=await api('/projects/'+projectId+'/exports',json('POST',{expected_revision:revision}));
+    if(state.project.id!==projectId)throw new Error('项目已切换，请重新打开加工包。');
+    state.packageSnapshot={project:capturedProject,pkg:exported.package_snapshot,exported};
+    showPage('package');renderPackagePage();
+  });
+}
+function packageVisualStory(snapshot){
+  const host=node('section',{class:'package-visual-story','aria-label':'模型与装配预览'});
+  const heading=node('div',{class:'package-visual-heading'},node('div',{},node('span',{class:'eyebrow'},'从这把椅子开始'),node('h2',{},'先看成品，再看怎么组成')));
+  const tabs=node('div',{class:'package-visual-tabs','aria-label':'模型展示方式'});
+  const stage=node('div',{class:'package-visual-stage','aria-live':'polite'},paragraph('正在从这版模型生成图片…'));
+  const legend=node('div',{class:'package-part-legend'}),caption=node('p',{class:'package-visual-caption'});
+  host.append(heading,stage,caption,legend);
+  const load=async()=>{
+    try{
+      snapshot.visualsPromise??=import('./package-visuals.js?v=1').then(module=>module.createPackageVisuals(snapshot.project,snapshot.pkg));
+      const visuals=await snapshot.visualsPromise;if(!host.isConnected)return;
+      const assembled=button('成品效果',()=>show('assembled'),'active'),exploded=button('拆开看',()=>show('exploded'));
+      tabs.append(assembled,exploded);heading.append(tabs);
+      const show=mode=>{
+        const isExploded=mode==='exploded';
+        assembled.classList.toggle('active',!isExploded);exploded.classList.toggle('active',isExploded);
+        assembled.setAttribute('aria-pressed',String(!isExploded));exploded.setAttribute('aria-pressed',String(isExploded));
+        stage.replaceChildren(node('img',{src:visuals[mode],alt:isExploded?'当前版本椅子的板件爆炸示意图':'当前版本椅子的完整模型效果'}));
+        caption.replaceChildren(node('span',{},isExploded?'按编号认识板件；分离方向用于展示组成，不代表实际装配顺序。':'直接来自加工包 v'+snapshot.pkg.revision+' 的模型。'),node('a',{href:visuals[mode],download:'junior-v'+snapshot.pkg.revision+'-'+mode+'.png'},'保存这张图'));
+        legend.hidden=!isExploded;
+      };
+      legend.append(...visuals.legend.map(part=>node('span',{},node('b',{},part.code),part.name)));
+      show('assembled');
+    }catch(error){snapshot.visualsPromise=null;if(host.isConnected)stage.replaceChildren(paragraph('模型图片暂时未生成。'),button('重新生成图片',()=>{stage.replaceChildren(paragraph('正在生成…'));return load();},'quiet'));}
+  };
+  queueMicrotask(load);return host;
 }
 function renderPackagePage() {
   const host=$('package-page-content'),snapshot=state.packageSnapshot;if(!snapshot)return;
-  const {project,pkg}=snapshot,stale=project.id!==state.project.id||pkg.revision!==state.project.revision;
+  const {project,pkg,exported}=snapshot,stale=project.id!==state.project.id||pkg.revision!==state.project.revision;
   host.replaceChildren();
   const status=stale?'设计已更新 · 当前显示历史快照':pkg.status==='ready'?'已确认设计资料 · 待加工核对':'设计资料草稿';
-  const summary=node('section',{class:'package-summary'},node('div',{},node('h2',{},project.name),paragraph('v'+pkg.revision+' · '+(pkg.parts?.length||0)+' 个板件 · '+(pkg.joints?.length||0)+' 处连接'),node('span',{class:'tag'},status)),node('div',{class:'package-actions'},button('更新资料',openPackage,'quiet'),button('下载设计包 ZIP',()=>downloadPackage({id:project.id,name:project.name,revision:pkg.revision}),'primary',stale||pkg.status!=='ready')));
+  const summary=node('section',{class:'package-summary'},node('div',{},node('h2',{},project.name),paragraph('v'+pkg.revision+' · '+(pkg.parts?.length||0)+' 个板件 · '+(pkg.joints?.length||0)+' 处连接'),node('span',{class:'tag'},status)),node('div',{class:'package-actions'},button('生成当前版本',openPackage,'quiet'),node('a',{href:exported?.pdf_url||API+'/projects/'+project.id+'/exports/'+pkg.revision+'/pdf',target:'_blank',rel:'noopener'},'下载 PDF'),button('下载加工包 ZIP',()=>downloadPackage({id:project.id,name:project.name,revision:pkg.revision}),'primary',pkg.status!=='ready')));
   host.append(summary);
+  host.append(packageVisualStory(snapshot));
   const blockers=(pkg.checks||[]).filter(check=>check.severity==='blocker');
-  if(stale)host.append(node('p',{class:'preview-banner'},'设计已修改，重新更新资料后再下载。历史快照不会覆盖当前设计。'));
+  if(stale)host.append(node('p',{class:'preview-banner'},'这是历史版本加工包，仍可下载。当前设计需要重新生成。'));
   else if(pkg.status!=='ready')host.append(node('div',{class:'preview-banner'},paragraph(blockers.length?'还有 '+blockers.length+' 项需要处理；可以先浏览草稿。':'请核对当前设计与检查范围，确认后下载。'),button(blockers.length?'查看待解决项':'核对并确认设计',()=>showList('review'))));
   const moduleRows=pkg.modules||project.modules||[];
   if(moduleRows.length){
-    const moduleSection=node('section',{class:'package-module-summary'},node('span',{class:'eyebrow'},'适配目标'),node('h2',{},'这件家具为谁、怎么使用'),paragraph('制作资料沿用当前设计版本的使用模块；它表达适配目标，不替代承载和安全复核。'));
+    const moduleSection=node('details',{class:'package-module-summary'},node('summary',{},'尺寸与使用者'),paragraph('沿用这一版模型的适配目标。'));
     moduleRows.forEach(module=>{
       const target=module.target||{},labels={seat_width_mm:'座宽',seat_depth_mm:'座深',seat_height_mm:'座高',back_angle_deg:'靠背角'};
       const values=Object.entries(target).filter(([,value])=>value!==null&&value!==undefined&&value!=='').map(([key,value])=>labels[key]?labels[key]+' '+value+(key.endsWith('_deg')?'°':' mm'):key+' '+value).join(' · ');
       const parts=(module.affected_part_ids||[]).map(id=>(project.parts||[]).find(part=>part.id===id)?.name||id).filter(Boolean).join('、');
-      moduleSection.append(node('article',{class:'package-module-card'},node('div',{},node('strong',{},module.name||'使用模块'),node('p',{},[module.occupant,module.posture].filter(Boolean).join(' · ')||'使用条件待补充')),node('span',{class:'tag'},({inferred:'待确认',target:'目标',confirmed:'已确认',conflict:'有冲突',needs_review:'需重新核对'})[module.status]||'适配目标'),values?node('p',{},values):null,parts?node('small',{},'关联部件 · '+parts):null));
+      moduleSection.append(node('article',{class:'package-module-card'},node('div',{},node('strong',{},module.name||'使用模块'),node('p',{},[module.occupant,postureLabels[module.posture]||module.posture].filter(Boolean).join(' · ')||'使用条件待补充')),node('span',{class:'tag'},({inferred:'待确认',target:'目标',confirmed:'已确认',conflict:'有冲突',needs_review:'需重新核对'})[module.status]||'适配目标'),values?node('p',{},values):null,parts?node('small',{},'关联部件 · '+parts):null));
     });
     host.append(moduleSection);
   }
-  const nav=node('nav',{class:'package-section-nav','aria-label':'制作资料目录'});for(const [id,label] of [['purchase','我买什么'],['workshop','交给加工店什么'],['assembly','我怎么装']])nav.append(button(label,()=>$('package-'+id).scrollIntoView({behavior:'smooth',block:'start'})));host.append(nav);
+  const nav=node('nav',{class:'package-section-nav','aria-label':'加工包目录'});for(const [id,label] of [['purchase','我买什么'],['workshop','交给加工店什么'],['assembly','我怎么装']])nav.append(button(label,()=>{const section=$('package-'+id);section.open=true;section.scrollIntoView({behavior:'smooth',block:'start'});}));host.append(nav);
   const purchase=node('section',{id:'package-purchase',class:'package-section'},node('span',{class:'eyebrow'},'01 · 采购与下料'),node('h2',{},'我买什么'),paragraph('板件尺寸单位为 mm。毛坯余量、锯缝和实际供料规格需与加工者核对。'));
   purchase.append(node('h3',{},'板件清单'),node('div',{class:'table-scroll'},renderRecords(pkg.cut_list||[])),node('h3',{},'五金采购'),node('div',{class:'table-scroll'},renderRecords(pkg.hardware||[])));host.append(purchase);
-  const workshop=node('section',{id:'package-workshop',class:'package-section'},node('span',{class:'eyebrow'},'02 · 加工资料'),node('h2',{},'交给加工店什么'),paragraph(({self:'当前计划：自行加工。',shop:'当前计划：加工店制件，自己装配。'})[pkg.fabrication_mode]||'制作方式尚未确定。'),paragraph('按零件编号查看图纸、加工面和连接。图纸可通过浏览器打印；本版 ZIP 包含 SVG 图纸与结构化设计数据。'));
+  const workshop=node('section',{id:'package-workshop',class:'package-section'},node('span',{class:'eyebrow'},'02 · 加工资料'),node('h2',{},'交给加工店什么'),paragraph(({self:'当前计划：自行加工。',shop:'当前计划：加工店制件，自己装配。'})[pkg.fabrication_mode]||'制作方式尚未确定。'),paragraph('按零件编号查看图纸、加工面和连接。当前版本同时提供 PDF、SVG 图纸和结构化设计数据。'));
   const sheets=pkg.drawings||[],gallery=node('div',{class:'package-sheet-grid'});
   sheets.forEach((sheet,index)=>{const card=button('',()=>openDrawingViewer(sheets,index,drawingViewerOptions()),'package-sheet');card.append(node('img',{src:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(sheet.svg),alt:sheet.title||'加工图',loading:'lazy'}),node('strong',{},(pkg.status==='ready'?'':'草稿 · ')+(sheet.title||sheet.id)));gallery.append(card);});
   workshop.append(sheets.length?gallery:paragraph('图纸尚未生成，先完成模型与做法。'));
@@ -787,14 +928,21 @@ function renderPackagePage() {
     assembly.append(node('article',{class:'assembly-step'+(step.confirmed?'':' assembly-pending')},node('span',{class:'assembly-number'},String(step.order).padStart(2,'0')),copy));
   }
   host.append(assembly);
+  // One readable chapter at a time; drawings and long tables stay available on demand.
+  for(const section of [purchase,workshop,assembly]){
+    const title=section.querySelector('h2'),kicker=section.querySelector('.eyebrow');
+    const chapter=node('details',{id:section.id,class:'package-section package-chapter'},node('summary',{},node('span',{},kicker.textContent),node('strong',{},title.textContent),node('span',{class:'chapter-toggle','aria-hidden':'true'},'+')));
+    title.remove();kicker.remove();while(section.firstChild)chapter.append(section.firstChild);section.replaceWith(chapter);
+  }
 }
 function renderRecords(records) {
   if(!records.length)return paragraph('未生成');
   const known=[['name','名称'],['part_id','编号'],['quantity','数量'],['material','材料'],['material_name','材料'],['size_mm','尺寸 mm'],['stock_size_mm','毛坯尺寸 mm'],['dimensions_mm','尺寸 mm'],['spec','规格'],['grain_axis','纹理轴']];
   const columns=known.filter(([key])=>records.some(record=>record[key]!==undefined));
-  return node('table',{class:'compact-table'},node('thead',{},node('tr',{},columns.map(([,label])=>node('th',{},label)))),node('tbody',{},records.map(record=>node('tr',{},columns.map(([key])=>node('td',{},Array.isArray(record[key])?record[key].join(' × '):typeof record[key]==='object'?Object.values(record[key]||{}).join(' × '):record[key]??''))))));
+  const format=value=>typeof value==='number'?Number(value.toFixed(2)):value;
+  return node('table',{class:'compact-table'},node('thead',{},node('tr',{},columns.map(([,label])=>node('th',{},label)))),node('tbody',{},records.map(record=>node('tr',{},columns.map(([key])=>node('td',{},Array.isArray(record[key])?record[key].map(format).join(' × '):typeof record[key]==='object'?Object.values(record[key]||{}).map(format).join(' × '):format(record[key])??''))))));
 }
-async function downloadPackage(snapshot) {const response=await fetch(API+'/projects/'+encodeURIComponent(snapshot.id)+'/package/download?revision='+encodeURIComponent(snapshot.revision));if(!response.ok)throw new Error('此设计包版本已变化或尚不可下载，请关闭后重新核对加工包。');const url=URL.createObjectURL(await response.blob());const link=node('a',{href:url,download:snapshot.name+'-v'+snapshot.revision+'.zip'});link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+async function downloadPackage(snapshot) {const response=await fetch(API+'/projects/'+encodeURIComponent(snapshot.id)+'/exports/'+encodeURIComponent(snapshot.revision)+'/download');if(!response.ok)throw new Error('这版加工包尚未生成或下载失败，请重试。');const url=URL.createObjectURL(await response.blob());const link=node('a',{href:url,download:snapshot.name+'-v'+snapshot.revision+'.zip'});link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 async function selectProject(id) {
   if(state.busy)throw new Error('正在处理当前操作，请稍后再切换项目。');
   if(id===state.project?.id){showPage('design');return;}
@@ -823,8 +971,8 @@ async function newProject() {
 
 function openConversation(open=true) {
   state.conversationOpen=open;
-  if(open&&compactLayout.matches)setPanel('tasks',false);
-  renderConversation();if(!state.dirtyForms)renderTasks();
+  if(open)setPanel('tasks',true);
+  renderConversation();renderModelGuide();if(!state.dirtyForms)renderTasks();
 }
 function conversationReply(text,reply,status='completed') {
   state.localMessages.push({id:crypto.randomUUID(),text,reply,status,created_at:new Date().toISOString(),kind:'local'});
@@ -836,7 +984,7 @@ function renderConversation() {
   $('conversation-panel').hidden=!state.conversationOpen;
   $('conversation-toggle').setAttribute('aria-expanded',String(state.conversationOpen));
   const records=[...state.interactionRecords,...state.localMessages].sort((a,b)=>a.created_at.localeCompare(b.created_at));
-  const labels={pending:'等待会话处理',ready:'修改候选',completed:'已完成',stale:'基于旧版本',superseded:'已合并到新请求',cancelled:'方案未采用',revision_requested:'等待调整方案',error:'发送未完成'};
+  const labels={pending:'等待会话处理',ready:'修改等你决定',completed:'已完成',stale:'基于旧版本',superseded:'已合并到新请求',cancelled:'方案未采用',revision_requested:'等待调整方案',error:'发送未完成'};
   const latest=records.at(-1),lastStatus=latest?.status;
   $('command-state').textContent=state.busy?'正在处理…':latest?(labels[lastStatus]||lastStatus):'告诉我怎么改';
   const key=JSON.stringify([records,state.proposal?.id,state.busy]);if(state.historyKey===key)return;state.historyKey=key;host.replaceChildren();
@@ -877,42 +1025,31 @@ function localNavigation(text) {
   return null;
 }
 async function submitInteraction() {
-  const submittedDraft=$('command-input').value,text=submittedDraft.trim();if(!text||!state.project||state.busy)return;
-  const submittedProjectId=state.project.id;
-  const clearSubmittedDraft=()=>{if(state.project?.id===submittedProjectId&&$('command-input').value===submittedDraft)setCommandDraft('');};
-  if(/^https?:\/\/\S+$/i.test(text)&&!state.proposal){try{const reply=await saveReferenceText(text);clearSubmittedDraft();conversationReply(text,reply);notice(reply);}catch(error){openConversation(true);conversationReply(text,error.message,'error');}return;}
-  openConversation(true);
-  const local=localNavigation(text);
-  if(local){conversationReply(text,local);clearSubmittedDraft();return;}
-  if(state.proposal){conversationReply(text,'先采用或取消当前修改，再继续调整。','error');return;}
-  if(state.dirtyForms){conversationReply(text,'先保存正在编辑的条件，再把它们一起带入这次请求。','error');return;}
-  try {
-    await guarded(async()=>{
-      const result=await api(base()+'/interaction',json('POST',{expected_revision:state.project.revision,text,selected_part_id:state.selectedId}));
-      clearSubmittedDraft();
-      if(result.proposal){state.proposal=result.proposal;clearInspection(false);await refreshData();render();if(result.record?.part_id)state.viewport?.focus(result.record.part_id);}
-      await refreshInteractionHistory();openConversation(true);
-    });
-  }catch(error){conversationReply(text,error.message||String(error),'error');}
-  renderConversation();
+  const submitted=$('command-input').value.trim();if(!submitted||!state.project||state.busy)return;
+  try{if(state.dirtyForms)throw new Error('先保存或取消正在编辑的内容.');const local=localNavigation(submitted);if(local){notice(local);setCommandDraft('');return;}await createDesignRun(state.project.parts.length?'modify':'reconstruct',submitted);setCommandDraft('');}catch(error){report(error);}
 }
 async function pollInteractions() {
   if(state.polling||state.busy||document.hidden||!state.project)return;
   state.polling=true;
   try {
+    await refreshDesignRun();
     const history=await refreshInteractionHistory();if(!history||state.dirtyForms)return;
     const ready=(history.records||[]).find(r=>r.status==='ready'&&r.proposal_id!==localStorage.getItem('junior-dismissed-'+state.project.id));
-    if(history.revision!==state.project.revision||ready&&!state.proposal){await refreshFromSession();if(ready){state.conversationOpen=false;if(compactLayout.matches){state.sidebarOpen=false;state.sidebarMode='tasks';syncSidebar();}else{setPanel('tasks',true);}render();}}
+    if(history.revision!==state.project.revision||ready&&!state.proposal){await refreshFromSession();if(ready){state.conversationOpen=false;render();}}
   } finally {state.polling=false;}
 }
 
 const compactLayout=matchMedia('(max-width:900px), (max-height:600px)');
 function syncSidebar() {
   const open=state.sidebarOpen,guide=state.sidebarMode==='tasks';
+  document.body.classList.toggle('module-surface-open',open&&guide&&state.activeTask==='fit');
+  document.body.classList.toggle('bottom-surface-open',open);
   document.body.classList.toggle('sidebar-collapsed',!open);
   $('work-sidebar').inert=!open;
+  const reviewing=!guide&&state.tab==='lists'&&state.listMode==='review';
+  $('work-sidebar').querySelector('.sidebar-header>strong').textContent=reviewing?'出包前核对':guide?'当前任务':'辅助信息';
   $('task-panel').hidden=!guide;$('context-panel').hidden=guide;
-  $('sidebar-context-heading').hidden=guide;
+  $('sidebar-context-heading').hidden=guide||reviewing;
   const step=tasks.find(([id])=>id===state.activeTask);
   $('sidebar-step-summary').textContent=step?'当前 · '+step[1]:'';
   const selected=displayProject()?.parts?.find(part=>part.id===state.selectedId);
@@ -923,21 +1060,29 @@ function syncSidebar() {
     element.setAttribute('aria-current',!guide&&element.dataset.tab===state.tab?'page':'false');
   }
   const toggle=$('toggle-sidebar');toggle.setAttribute('aria-expanded',String(open));
-  toggle.setAttribute('aria-label',open?'收起工作侧栏':'展开工作侧栏');toggle.title=toggle.getAttribute('aria-label');
+  toggle.setAttribute('aria-label',open?'收起辅助信息':'打开辅助信息');toggle.title=toggle.getAttribute('aria-label');
+  requestAnimationFrame(syncViewportFraming);
+}
+function syncViewportFraming(){
+  const active=state.page==='design'&&state.sidebarOpen&&matchMedia('(min-width:601px) and (min-height:601px)').matches;
+  state.viewport?.setBottomOcclusion(active?$('work-sidebar').getBoundingClientRect().height+28:0);
 }
 function setPanel(name,open,{persist=true}={}) {
   if(open)state.sidebarMode=name;
   $('sidebar-library').open=false;
   state.sidebarOpen=open;syncSidebar();
-  if(persist&&!compactLayout.matches)localStorage.setItem('junior-sidebar-open',open?'open':'closed');
+  if(persist&&!compactLayout.matches)localStorage.setItem('junior-sidebar-open-v2',open?'open':'closed');
+  if(state.project)renderModelGuide();
 }
-function applyLayout(){state.sidebarOpen=!compactLayout.matches&&localStorage.getItem('junior-sidebar-open')!=='closed';syncSidebar();}
+function applyLayout(){state.sidebarOpen=!compactLayout.matches&&localStorage.getItem('junior-sidebar-open-v2')==='open';syncSidebar();}
 $('toggle-sidebar').addEventListener('click',()=>setPanel(state.sidebarMode,!state.sidebarOpen));
 document.querySelector('[data-sidebar="tasks"]').addEventListener('click',()=>setPanel('tasks',true));
-compactLayout.addEventListener('change',applyLayout);applyLayout();
+compactLayout.addEventListener('change',()=>{syncSidebar();syncViewportFraming();});applyLayout();
+window.addEventListener('resize',syncViewportFraming);
+new ResizeObserver(syncViewportFraming).observe($('work-sidebar'));
 
 document.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if($('sidebar-library').open){$('sidebar-library').open=false;return;}if(state.inspectedJointId)clearInspection();});
-document.addEventListener('input',event=>{if(event.target.closest('.task-panel,.context-panel')&&!event.target.closest('.layer-item,[data-flow-draft]'))state.dirtyForms=true;});
+document.addEventListener('input',event=>{if(event.target.type==='checkbox')return;if(event.target.closest('.task-panel,.context-panel')&&!event.target.closest('.layer-item,[data-flow-draft]'))state.dirtyForms=true;});
 window.addEventListener('focus',()=>refreshFromSession().catch(report));
 
 $('project-name').addEventListener('change',()=>mutate({name:$('project-name').value.trim()||'我的木椅'}).then(listProjects).catch(report));
@@ -950,8 +1095,17 @@ document.querySelectorAll('[data-tab]').forEach(element=>element.addEventListene
 document.querySelectorAll('[data-view]').forEach(element=>element.addEventListener('click',()=>{state.viewport?.setView(element.dataset.view);document.querySelectorAll('[data-view]').forEach(button=>button.classList.toggle('active',button===element));}));
 document.querySelectorAll('[data-tool]').forEach(element=>element.addEventListener('click',()=>{clearInspection();state.viewport?.setTool(element.dataset.tool);if(element.dataset.tool!=='mirror')document.querySelectorAll('[data-tool]').forEach(button=>button.classList.toggle('active',button===element));}));
 $('hardware-toggle').addEventListener('click',()=>{const visible=!state.viewport?.hardwareVisible;state.viewport?.setHardwareVisible(visible);$('hardware-toggle').setAttribute('aria-pressed',String(visible));});
-$('undo').addEventListener('click',()=>{const previous=[...state.versions].filter(version=>version.revision<state.project.revision).sort((a,b)=>b.revision-a.revision)[0];if(previous)restoreVersion(previous.revision).catch(report);});
-$('package-button').addEventListener('click',()=>openPackage().catch(report));
+$('undo').addEventListener('click',()=>navigateHistory(false).catch(report));
+const redoButton=button('重做',()=>navigateHistory(true),'more-item',true);redoButton.id='redo';$('undo').after(redoButton);
+async function navigateHistory(redo=false){
+  if(state.busy||state.proposal||state.dirtyForms)throw new Error('先完成或取消当前编辑。');
+  state.undoTargets??=state.versions.filter(v=>v.revision<state.project.revision).sort((a,b)=>a.revision-b.revision).map(v=>v.revision);state.redoTargets??=[];
+  const source=redo?state.redoTargets:state.undoTargets,target=source.at(-1);if(!target)return;
+  const current=state.project.revision;state.historyNavigating=true;
+  try{await restoreVersion(target);source.pop();(redo?state.undoTargets:state.redoTargets).push(current);state.historyRevision=state.project.id+':'+state.project.revision;}
+  finally{state.historyNavigating=false;render();}
+}
+$('package-button').addEventListener('click',()=>enterPackageFlow().catch(report));
 $('command-form').addEventListener('submit',event=>{event.preventDefault();submitInteraction();});
 $('conversation-toggle').addEventListener('click',()=>openConversation(!state.conversationOpen));
 $('conversation-close').addEventListener('click',()=>openConversation(false));
@@ -967,7 +1121,7 @@ $('more-demo').addEventListener('click',()=>{moreMenu.open=false;openCafeDemo().
 $('more-sidebar').addEventListener('click',()=>{moreMenu.open=false;setPanel(state.sidebarMode,!state.sidebarOpen);});
 document.querySelectorAll('#more-menu .more-item').forEach(item=>item.addEventListener('click',()=>{moreMenu.open=false;}));
 document.querySelectorAll('[data-flow]').forEach(el=>el.addEventListener('click',()=>{try{goTask(el.dataset.flow==='make'&&taskDone('make')?'confirm':el.dataset.flow);render();}catch(error){report(error);}}));
-$('flow-drawings').addEventListener('click',()=>openPackage().catch(report));
+$('flow-drawings').addEventListener('click',()=>enterPackageFlow().catch(report));
 $('reference-close').addEventListener('click',()=>$('reference-dialog').close());
 $('reference-preview-close').addEventListener('click',()=>$('reference-preview').close());
 $('reference-form').addEventListener('submit',async event=>{event.preventDefault();$('reference-save').disabled=true;try{await saveReferenceText($('reference-text').value);$('reference-dialog').close();}catch(error){$('reference-error').textContent=error.message;}finally{$('reference-save').disabled=false;}});
@@ -996,11 +1150,11 @@ function showPage(page) {
 }
 function renderHome() {
   if(document.activeElement!==$('home-input'))$('home-input').value=state.homeDraft;
-  $('home-channel-note').textContent=state.aiStatus?.mode==='prototype'?'本地原型生成：提交参考后可以直接预览一版候选。':state.aiStatus?.ready?'在线 AI 已配置：提交后将生成模型候选。':'会话协作：先保存需求，再由当前聊天返回可编辑模型。';
+  $('home-channel-note').textContent='会话 Agent：提交参考后，由当前聊天读取资料、建模并检查，结果直接回到工作台。';
   $('home-start').disabled=state.busy||!state.homeDraft.trim();$('home-upload').disabled=state.busy;$('home-demo').disabled=state.busy;
   const list=$('home-project-list');list.replaceChildren();
   for(const item of state.projects){const p=state.projectDetails[item.id],current=item.id===state.project?.id,pending=current&&state.proposal;
-    const status=pending?'有候选待采用':p?.confirmed_revision===p?.revision&&p?'设计资料已确认':p?.parts?.length?'继续调整设计':p?.references?.length?'参考已保存':'继续项目';
+    const status=pending?'有一版修改等你决定':p?.confirmed_revision===p?.revision&&p?'设计资料已确认':p?.parts?.length?'继续调整设计':p?.references?.length?'参考已保存':'继续项目';
     const card=button('',()=>selectProject(item.id),'project-card',state.busy);
     card.append(node('span',{class:'project-marker','aria-hidden':'true'},p?.parts?.length?String(p.parts.length).padStart(2,'0'):'↗'),node('div',{},node('strong',{},item.name),node('small',{},'v'+item.revision+' · '+new Date(item.updated_at).toLocaleDateString('zh-CN')),node('span',{class:'project-status'},status)),node('span',{class:'project-continue'},current?'继续当前 →':'打开 →'));list.append(card);
   }
@@ -1011,17 +1165,26 @@ async function beginFromHome({upload=false}={}) {
   try {
     if(!upload&&!state.homeDraft.trim())return;
     const draft=state.homeDraft;await newProject();state.referenceDraft=draft;persistDrafts();render();
-    if(upload)$('reference-input').click();else {await saveReferenceText(draft);}
+    if(upload){if(draft.trim())await saveReferenceText(draft);$('reference-input').click();}else {await saveReferenceText(draft);await generateModel();}
     state.homeDraft='';localStorage.removeItem('junior-home-draft');renderHome();
   }catch(error){$('home-error').textContent=error.message;report(error);}
 }
-$('home-link').addEventListener('click',event=>{event.preventDefault();showPage('design');});
+$('home-link').addEventListener('click',event=>{event.preventDefault();showPage('home');});
 $('command-input').addEventListener('input',event=>{state.commandDraft=event.target.value;persistDrafts();});
 $('home-input').addEventListener('input',event=>{state.homeDraft=event.target.value;localStorage.setItem('junior-home-draft',state.homeDraft);$('home-start').disabled=state.busy||!state.homeDraft.trim();});
 $('home-form').addEventListener('submit',event=>{event.preventDefault();beginFromHome();});
 $('home-upload').addEventListener('click',()=>beginFromHome({upload:true}));
 $('home-demo').addEventListener('click',()=>openCafeDemo().catch(report));
 $('home-project-refresh').addEventListener('click',()=>listProjects().catch(report));
+const modelFileInput=node('input',{type:'file',accept:'.json,application/json',hidden:true});document.body.append(modelFileInput);
+const chooseModel=()=>{if(state.dirtyForms||state.busy)throw new Error('先保存或取消当前输入。');modelFileInput.click();};
+$('home-project-refresh').before(button('打开模型文件',chooseModel,'quiet'));
+$('new-project').after(button('打开模型文件',chooseModel,'more-item'));
+modelFileInput.addEventListener('change',async()=>{
+  const file=modelFileInput.files?.[0];modelFileInput.value='';if(!file)return;
+  try{if(file.size>2*1024*1024)throw new Error('模型文件最多 2 MB。');let imported;await guarded(async()=>{imported=await api('/projects/import',{method:'POST',headers:{'content-type':'application/json'},body:await file.text()});await listProjects();});await selectProject(imported.id);notice('已打开为独立项目，原项目保持不变。');}
+  catch(error){report(error);}
+});
 $('package-back').addEventListener('click',()=>showPage('design'));
 window.addEventListener('beforeunload',event=>{persistDrafts();if(state.dirtyForms){event.preventDefault();event.returnValue='';}});
 
@@ -1029,19 +1192,20 @@ setInterval(()=>pollInteractions().catch(()=>{}),4000);
 
 (async()=>{
   try {
-    const {WorkshopViewport}=await import('./viewport.js?v=r1-4');state.viewport=new WorkshopViewport($('viewport'),{onSelect:id=>selectPart(id),onSelectHardware:instance=>inspectJoint(instance.joint_id),onTransform:part=>{if(!state.project)return;stagePatch({parts:state.project.parts.map(item=>item.id===part.id?part:item),joints:state.project.joints.map(joint=>joint.part_ids.includes(part.id)?{...joint,confirmed:false}:joint)},'调整 '+part.name).catch(report);},onMeasure:result=>{$('measure-result').classList.toggle('hidden',!result);if(result)$('measure-result').textContent=result.pending?'选择第二个模型表面点':result.distance_mm.toFixed(1)+' mm · 两点空间距离';},onError:report});
+    const {WorkshopViewport}=await import('./viewport.js?v=r2-1');state.viewport=new WorkshopViewport($('viewport'),{onSelect:id=>selectPart(id),onSelectHardware:instance=>inspectJoint(instance.joint_id),onTransform:part=>{if(!state.project)return;stagePatch({parts:state.project.parts.map(item=>item.id===part.id?part:item)},'调整 '+part.name).catch(report);},onMeasure:result=>{$('measure-result').classList.toggle('hidden',!result);if(result)$('measure-result').textContent=result.pending?'选择第二个模型表面点':result.distance_mm.toFixed(1)+' mm · 两点空间距离';},onError:report});
   } catch(error) {$('viewport-error').textContent='三维视口加载失败：'+error.message;$('viewport-error').classList.remove('hidden');}
   try {state.aiStatus=await api('/ai/status');} catch(error) {report(error);}
   try {state.context=await api('/context');} catch(error) {report(error);}
+  try {state.savedProfile=await api('/profile');}catch{}
   try {
     await listProjects();
     const route=new URL(location.href),explicit=route.searchParams.has('project');
     const requestedId=explicit?route.searchParams.get('project'):localStorage.getItem('junior-project-id');
-    const existing=state.projects.find(project=>project.id===requestedId)||(explicit?null:state.projects[0]);
+    const existing=state.projects.find(project=>project.id===requestedId);
     if(explicit&&!existing){
       showPage('home');$('home-error').textContent='链接中的项目在本机不存在。请从“我的项目”选择，或开始新的设计。';
     }else{
-      if(existing)await selectProject(existing.id);else await newProject();
+      if(existing)await selectProject(existing.id);else { state.project=null; showPage('home'); renderHome(); }
       if(route.searchParams.get('view')==='package'&&state.project?.parts?.length)await openPackage();
     }
   } catch(error) {report(error);$('save-state').textContent='连接失败，请确认本地服务已启动';}

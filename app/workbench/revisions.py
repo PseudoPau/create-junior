@@ -3,19 +3,20 @@ from app.workbench.models import Project
 
 
 def invalidate_connections(previous: Project, data: dict) -> None:
-    """Clear connection confirmations when their parts or materials changed in validated data."""
-    old_parts = {p.id: p.model_dump(mode="json") for p in previous.parts}
-    new_parts = {p["id"]: p for p in data.get("parts", [])}
-    changed_parts = {pid for pid in set(old_parts) | set(new_parts)
-                     if old_parts.get(pid) != new_parts.get(pid)}
-    old_materials = previous.model_dump(mode="json")["materials"]
-    changed_materials = {mid for mid in set(old_materials) | set(data.get("materials", {}))
-                         if old_materials.get(mid) != data.get("materials", {}).get(mid)}
-    changed_parts.update(p["id"] for p in data.get("parts", [])
-                         if p.get("material_id") in changed_materials)
-    if changed_parts:
-        data["joints"] = [
-            {**joint, "confirmed": False}
-            if changed_parts.intersection(joint.get("part_ids", [])) else joint
-            for joint in data.get("joints", [])
-        ]
+    """Consent follows the selected construction method, never a geometry-valid flag.
+
+    Resizing an adopted method does not change the user's decision. All current
+    geometry is independently checked by the engine, including misaligned holes.
+    Different hardware families, membership or connection types require adoption.
+    """
+    def method(joint):
+        hardware = sorted((item.get('geometry') or {}).get('kind') or item.get('name', '')
+                          for item in joint.get('hardware', []))
+        return joint.get('kind'), sorted(joint.get('part_ids', [])), sorted(joint.get('feature_ids', [])), hardware
+
+    previous_joints = {joint.id: joint.model_dump(mode='json') for joint in previous.joints}
+    for joint in data.get('joints', []):
+        prior = previous_joints.get(joint['id'])
+        joint['confirmed'] = bool(prior and prior.get('confirmed') and method(prior) == method(joint))
+    from app.workbench.review import invalidate_review
+    invalidate_review(previous, data)

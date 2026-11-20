@@ -40,7 +40,7 @@ def build_proposal(project: Project, summary: str, patch: dict, purpose: str = "
         raise ValueError("候选只能修改设计字段，不能修改项目身份、参考文件或确认状态")
     # Validate shape before inspecting nested values, then clear confirmation flags.
     candidate = Project.model_validate({**project.model_dump(mode="json"), **deepcopy(patch)})
-    if "scale" in patch and candidate.scale:
+    if "scale" in patch and candidate.scale and candidate.scale != project.scale:
         candidate.scale.confirmed = False
     if "joints" in patch:
         for joint in candidate.joints:
@@ -48,14 +48,23 @@ def build_proposal(project: Project, summary: str, patch: dict, purpose: str = "
     known_sources = {ref.id for ref in project.references}
     if any(set(e.source_ids) - known_sources for e in candidate.evidence):
         raise ValueError("候选证据引用了当前项目不存在的参考图片")
+    if set(candidate.preservation.source_ids) - known_sources:
+        raise ValueError("保型规则引用了当前项目不存在的参考依据")
+    if any(set(suggestion.source_ids) - known_sources for module in candidate.modules for suggestion in module.suggestions):
+        raise ValueError("尺寸建议引用了当前项目不存在的参考依据")
     candidate.confirmed_revision = None
     candidate.acknowledged_limits = False
+    if "preservation" in patch and candidate.preservation != project.preservation:
+        candidate.preservation.status = "inferred"
     normalized = candidate.model_dump(mode="json")
-    normalized_patch = {key: normalized[key] for key in patch}
     # The committed write and candidate preview obey one invalidation rule.
     invalidate_connections(project, normalized)
+    normalized_patch = {key: normalized[key] for key in patch}
     package = build_package(normalized)
+    from app.workbench.preservation import preservation_conflict
+    conflict = preservation_conflict(project, normalized)
     return {"id": str(uuid4()), "base_revision": project.revision, "status": "ready",
             "summary": summary, "patch": normalized_patch, "purpose": purpose,
             "package_preview": package,
-            "checks": package["checks"], "coverage": package.get("coverage", {})}
+            "checks": package["checks"], "coverage": package.get("coverage", {}),
+            "preservation_conflict": conflict}

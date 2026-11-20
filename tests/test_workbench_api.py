@@ -87,9 +87,16 @@ def test_upload_rejects_unrecognized_image_without_mutation(client):
 
 def test_ui_and_local_dependencies_are_served(client):
     page = client.get("/")
-    assert "下一步" in page.text
-    assert "viewport.js" in client.get("/static/app.js").text
-    assert client.get("/static/vendor/three/three.module.js").status_code == 200
+    assert page.status_code == 200
+    assert 'type="importmap"' in page.text
+    assert '"three":"/static/vendor/three/three.module.js"' in page.text
+    assert '"three/addons/":"/static/vendor/three/addons/"' in page.text
+    assert "viewport.js" in client.get("/static/studio.js").text
+    for asset in ("three.module.js", "three.core.js", "addons/controls/OrbitControls.js",
+                  "addons/controls/TransformControls.js"):
+        response = client.get("/static/vendor/three/" + asset)
+        assert response.status_code == 200
+        assert "javascript" in response.headers["content-type"]
 
 
 

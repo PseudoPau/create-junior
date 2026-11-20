@@ -8,6 +8,12 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.workbench.api import router as workbench_router
+from app.workbench.exports import router as export_router
+from app.workbench.run_api import router as run_router
+from app.workbench.model_import import router as model_import_router
+from app.workbench.domain_flow import create_domain_router
+from app.workbench.review_api import create_review_router
+from app.workbench import api as workbench_api
 
 app = FastAPI(
     title="Create Junior",
@@ -29,3 +35,8 @@ def health() -> dict[str, str]:
 
 
 app.include_router(workbench_router)
+app.include_router(export_router)
+app.include_router(run_router)
+app.include_router(model_import_router)
+app.include_router(create_domain_router(lambda: workbench_api.workbench_store))
+app.include_router(create_review_router(lambda: workbench_api.workbench_store))
