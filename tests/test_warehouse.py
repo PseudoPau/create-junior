@@ -25,3 +25,16 @@ def test_warehouse_rejects_bad_entries(tmp_path, monkeypatch):
         warehouse.add_item({"name": "x", "kind": "nope"})
     with pytest.raises(ValueError):
         warehouse.add_item({"name": "x", "quantity": 0})
+
+
+def test_warehouse_quantity_updates_and_removes_at_zero(tmp_path, monkeypatch):
+    monkeypatch.setattr(warehouse, "PATH", tmp_path / "warehouse.json")
+    item = warehouse.add_item({"name": "五金", "kind": "hardware", "quantity": 1})
+    items = warehouse.set_quantity(item["id"], 3)
+    assert items[0]["quantity"] == 3
+    items = warehouse.set_quantity(item["id"], 2)
+    assert items[0]["quantity"] == 2
+    items = warehouse.set_quantity(item["id"], 0)
+    assert items == []
+    with pytest.raises(ValueError):
+        warehouse.set_quantity(item["id"], 1)

@@ -211,7 +211,7 @@ export class WorkshopViewport {
     const corners = [new THREE.Vector3(min.x,min.y,min.z),new THREE.Vector3(min.x,min.y,max.z),new THREE.Vector3(min.x,max.y,min.z),new THREE.Vector3(min.x,max.y,max.z),new THREE.Vector3(max.x,min.y,min.z),new THREE.Vector3(max.x,min.y,max.z),new THREE.Vector3(max.x,max.y,min.z),new THREE.Vector3(max.x,max.y,max.z)];
     const mids = [];
     for (let i=0;i<8;i++) for (let j=i+1;j<8;j++) { let diff=0; for (const axis of ['x','y','z']) if (Math.abs(corners[i][axis]-corners[j][axis])>1e-6) diff++; if (diff===1) mids.push(corners[i].clone().add(corners[j]).multiplyScalar(.5)); }
-    const faces = [new THREE.Vector3(0,min.y,0),new THREE.Vector3(0,0,min.z),new THREE.Vector3(min.x,0,0),new THREE.Vector3(max.x,0,0),new THREE.Vector3(0,max.y,0),new THREE.Vector3(0,0,max.z)];
+    const cx=(min.x+max.x)/2,cy=(min.y+max.y)/2,cz=(min.z+max.z)/2;const faces = [new THREE.Vector3(cx,min.y,cz),new THREE.Vector3(cx,max.y,cz),new THREE.Vector3(min.x,cy,cz),new THREE.Vector3(max.x,cy,cz),new THREE.Vector3(cx,cy,min.z),new THREE.Vector3(cx,cy,max.z)];
     const centers = [new THREE.Vector3((min.x+max.x)/2,(min.y+max.y)/2,(min.z+max.z)/2)];
     const candidates = [...corners.map(p=>({point:p,type:'端点'})),...mids.map(p=>({point:p,type:'中点'})),...faces.map(p=>({point:p,type:'面心'})),...centers.map(p=>({point:p,type:'中心'}))];
     // Include the closest point on each bounding-box edge for edge inference.

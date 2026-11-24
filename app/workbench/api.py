@@ -227,6 +227,15 @@ def warehouse_add(payload: dict = Body(...)):
         raise HTTPException(422, str(error)) from None
 
 
+@router.patch("/warehouse/{item_id}")
+def warehouse_set_quantity(item_id: str, payload: dict = Body(...)):
+    from app.workbench.warehouse import set_quantity
+    try:
+        return {"items": set_quantity(item_id, payload.get("quantity"))}
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
+
+
 @router.delete("/warehouse/{item_id}")
 def warehouse_delete(item_id: str):
     from app.workbench.warehouse import delete_item

@@ -7,7 +7,7 @@ import {parseQuantity} from './quantity-input.js';
 const API='/api/workbench', $=id=>document.getElementById(id), clone=value=>structuredClone(value);
 const ACTIVE=new Set(['waiting_for_session','running','needs_input']);
 const STAGES=['复原','适己','怎么做','加工包'],POSTURES={upright:'正坐',reclined:'靠坐',leaning:'斜靠',cross_legged:'盘腿'};
-const state={page:'R1',project:null,projects:[],review:null,pkg:null,comparison:null,proposal:null,run:null,exported:null,packageProject:null,ai:null,aiTest:null,savedProfile:null,profileNotes:'',busy:false,error:'',selected:null,tool:'select',exploded:false,isolated:false,dimensionIndex:0,boardIndex:0,nodeIndex:0,summaryKind:'board',summaryIndex:0,nodeMode:'whole',pending:'',dimensionDirty:false,previewOriginal:false,files:[],referenceUrl:'',idea:'',editText:'',answer:'',profile:null,methodDraft:null,editKind:'board',runReturn:'R4',undo:[],redo:[],exports:[],drawingIndex:0,assemblyIndex:0,settingsReturn:'R1',requestTicket:0};
+const state={page:'R1',project:null,projects:[],review:null,pkg:null,comparison:null,proposal:null,run:null,exported:null,packageProject:null,ai:null,aiTest:null,savedProfile:null,profileNotes:'',settingsTab:'ai',busy:false,error:'',selected:null,tool:'select',exploded:false,isolated:false,dimensionIndex:0,boardIndex:0,nodeIndex:0,summaryKind:'board',summaryIndex:0,nodeMode:'whole',pending:'',dimensionDirty:false,previewOriginal:false,files:[],referenceUrl:'',idea:'',editText:'',answer:'',profile:null,methodDraft:null,editKind:'board',runReturn:'R4',undo:[],redo:[],exports:[],drawingIndex:0,assemblyIndex:0,settingsReturn:'R1',requestTicket:0};
 let viewport=null,viewportModelKey='',pollTimer=null,previewTimer=null,previewTicket=0,loadingProject=0;
 const body=$('step-body'),actions=$('step-actions'),overlay=$('viewport-overlay');
 function el(tag,attrs={},...children){const e=document.createElement(tag);for(const [key,value]of Object.entries(attrs)){if(value===null||value===undefined||value===false)continue;if(key==='class')e.className=value;else if(key.startsWith('on'))e.addEventListener(key.slice(2).toLowerCase(),value);else if(key==='value')e.value=value;else if(key==='checked'||key==='disabled'||key==='hidden')e[key]=!!value;else e.setAttribute(key,String(value));}for(const child of children.flat(Infinity))if(child!==null&&child!==undefined&&child!==false)e.append(child instanceof Node?child:String(child));if(attrs.value!==undefined)e.value=attrs.value;return e;}
@@ -237,22 +237,51 @@ function renderPackage(){if(!state.exported){heading('生成当前版本加工�
   if(state.page==='P7'){heading('把设计带到工坊。');body.append(text('方案 v'+revision),...['可编辑模型 JSON','PDF / SVG 图纸','采购单、下料表、五金表','装配说明与模型图片'].map(label=>dataRow(label,'已生成')));footer('P1','下载加工包 ZIP',()=>download(state.exported.download_url,'junior-v'+revision+'.zip'));body.append(button('返回设计',()=>navigate('M9'),false,{quiet:true}));}
 }
 function openSettings(){state.settingsReturn=state.page==='settings'?state.settingsReturn:state.page;navigate('settings');}
+function saveJSONFile(name,data){saveBlob(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),name);}
+async function exportProjectJSON(){if(!state.project)throw new Error('先打开一个项目。');const project=await api(base()+'/projects/'+encodeURIComponent(state.project.id));saveJSONFile('junior-'+project.id.slice(0,8)+'-v'+project.revision+'.json',project);}
+async function exportWarehouseJSON(){const warehouse=await api(base()+'/warehouse');saveJSONFile('junior-warehouse.json',warehouse.items||[]);}
+async function importWarehouseJSON(file){if(!file)return;let data;try{data=JSON.parse(await file.text());}catch{throw new Error('仓库文件不是有效 JSON。');}const items=Array.isArray(data)?data:data.items;if(!Array.isArray(items))throw new Error('仓库文件需要是数组或 { items: [] }。');for(const item of items)await api(base()+'/warehouse',payload('POST',{name:item.name,kind:item.kind||'sheet',spec:item.spec,dims:item.dims,quantity:item.quantity,note:item.note}));state.aiTest={ok:true,message:'已导入 '+items.length+' 条仓库记录。'};render();}
 function renderSettings(){
-  heading('AI 连接','工作室设置');
+  heading('工作室设置','设置');
   const ai=state.ai||{};
+  const tab=state.settingsTab||'ai';
+  const tabs=el('div',{class:'settings-tabs'},...[
+    ['ai','AI 连接'],['data','数据'],['commercial','商业化']
+  ].map(([key,label])=>rawButton(label,()=>{state.settingsTab=key;render();},{'aria-pressed':tab===key,class:tab===key?'on':''})));
+  if(tab==='data'){
+    const projectFile=el('input',{type:'file',accept:'.json,application/json',hidden:true,onChange:e=>action(()=>importModel(e.target.files[0]))});
+    const warehouseFile=el('input',{type:'file',accept:'.json,application/json',hidden:true,onChange:e=>action(()=>importWarehouseJSON(e.target.files[0]))});
+    body.append(tabs,el('div',{class:'settings-section'},el('h3',{},'项目与仓库'),el('div',{class:'settings-actions'},
+      button('导出当前项目',exportProjectJSON,false,{quiet:true}),
+      button('导入模型 JSON',()=>projectFile.click(),false,{quiet:true}),
+      button('导出仓库',exportWarehouseJSON,false,{quiet:true}),
+      button('导入仓库',()=>warehouseFile.click(),false,{quiet:true})
+    ),projectFile,warehouseFile,el('small',{},'项目导出为 JSON；模型导入会打开为新的项目；仓库导入会追加条目。')));
+    footer(state.settingsReturn,null);return;
+  }
+  if(tab==='commercial'){
+    body.append(tabs,el('div',{class:'settings-section'},el('h3',{},'商业化方向'),el('ul',{class:'idea-list'},
+      el('li',{},el('b',{},'按版本出包'),'：每次结构变化单独生成加工包，按次或订阅收费。'),
+      el('li',{},el('b',{},'材料/五金报价'),'：接本地供应商，按采购额收服务费。'),
+      el('li',{},el('b',{},'加工店撮合'),'：按地区匹配可下料、可打孔的小店，平台抽成。'),
+      el('li',{},el('b',{},'模板/工作室席位'),'：可复用椅型、适己参数和团队出包额度。'),
+      el('li',{},el('b',{},'企业定制'),'：品牌、尺寸、BOM 的私有化版本。')
+    ),el('small',{},'以上是待验证方向，不在当前版本计费。')));
+    footer(state.settingsReturn,null);return;
+  }
   const provider=el('label',{class:'field'},'提供方',el('select',{'data-ai-provider':''},...[
     ['openai','OpenAI（Responses）'],['openai_compatible','OpenAI 兼容接口'],['session','会话协作（当前聊天返回）'],['prototype','本地原型（不调用模型）'],['none','关闭 AI']
   ].map(([value,label])=>el('option',{value,selected:(ai.provider||ai.mode||'openai_compatible')===value},label))));
   const base=field('服务地址 · Base URL',ai.base_url||'',()=>{}, {placeholder:'https://api.openai.com/v1','data-ai-base':''});
   const model=field('模型名称',ai.model||'',()=>{}, {placeholder:'支持图片的模型','data-ai-model':''});
   const key=field('API 密钥', '',()=>{}, {type:'password',placeholder:ai.configured?.API_KEY?'已保存，留空不改':'输入密钥','data-ai-key':''});
-  body.append(
+  body.append(tabs,
     el('div',{class:'data-row'},el('span',{},'当前状态'),el('strong',{},ai.label||'尚未读取')),
     provider,base,model,key,
     el('div',{class:'data-row'},el('span',{},'配置文件'),el('small',{class:'config-path'},ai.config_path||'.data/ai-config.json')),
     state.aiTest?el('small',{class:state.aiTest.ok?'test-ok':'test-fail'},state.aiTest.message):null
   );
-  footer(state.settingsReturn,'保存配置',saveAISettings);
+  footer(state.settingsReturn,'保存 AI 配置',saveAISettings);
   actions.append(button('测试连接',testAISettings,false,{quiet:true}));
 }
 async function testAISettings(){
@@ -299,7 +328,27 @@ function renderContext(){
     context.append(el('div',{class:'context-section'},el('h3',{},'AI 配置'),el('p',{},state.ai.label||'尚未读取'),el('p',{class:'config-path'},state.ai.config_path||'.data/ai-config.json')));
   }
 }
-function render(){const index=stageIndex();document.body.dataset.stage=STAGES[index];document.body.dataset.page=state.page;body.replaceChildren();actions.replaceChildren();$('step-error').textContent=state.error;$('step-error').hidden=!state.error;$('stage-nav').replaceChildren(...STAGES.map((label,i)=>el('button',{type:'button','aria-current':i===index?'step':null,disabled:state.busy,onClick:()=>action(()=>switchStage(i))},el('span',{},String(i+1).padStart(2,'0')),label)));
+function workflowStatus(){
+  const model=!!(state.project?.parts?.length);
+  let dims=[];try{dims=dimensions();}catch{}
+  const dimensionsDone=dims.length>0&&dims.every(item=>item.confirmed);
+  const methodsDone=!!state.review?.complete;
+  const packageDone=!!state.exported;
+  return [model,dimensionsDone,methodsDone,packageDone];
+}
+function renderStageNav(index){
+  const outputs=['参考 → 第一版模型','身体 → 五项尺寸','板件 / 连接 → 做法','采购 / 图纸 / 装配'];
+  const actions=['把参考变成可编辑模型','确定这次制作的目标尺寸','确认板件和连接做法','生成可交付的加工包'];
+  const done=workflowStatus();
+  $('stage-nav').replaceChildren(...STAGES.map((label,i)=>el('button',{type:'button','aria-current':i===index?'step':null,disabled:state.busy,class:(i===index?'on ':'')+(done[i]?'done':''),onClick:()=>action(()=>switchStage(i))},
+    el('span',{class:'wf-num'},String(i+1).padStart(2,'0')),
+    el('span',{class:'wf-copy'},el('b',{},label),el('small',{},outputs[i])),
+    el('span',{class:'wf-mark'},done[i]?'✓':i===index?'当前':'')
+  )));
+  const now=$('stage-nav').querySelector('[aria-current=step]');
+  if(now)now.setAttribute('title',actions[index]);
+}
+function render(){const index=stageIndex();document.body.dataset.stage=STAGES[index];document.body.dataset.page=state.page;body.replaceChildren();actions.replaceChildren();$('step-error').textContent=state.error;$('step-error').hidden=!state.error;renderStageNav(index);
   if(state.page==='settings')renderSettings();else if(state.page.startsWith('P'))renderPackage();else if(['R2','F2','M4'].includes(state.page))renderWaiting();else ({R1:renderEntry,R4:renderRestore,R5:renderRestoreEdit,F1:renderProfile,F6:renderProfilePosture,F3:renderDimension,F4:renderConflict,F5:renderSizeSummary,M1:renderMethods,M2:renderBoard,M3:renderMethodEdit,M5:renderMethodPreview,M8:renderNode,M9:renderMethodSummary,M6:renderUnresolved}[state.page]||renderEntry)();
   renderViewport();renderContext();renderAIRail();renderBusy();$('project-picker').value=state.project?.id||'';const modeEditor=$('mode-editor');if(modeEditor)modeEditor.href=state.project?.parts?.length?'/editor?project='+encodeURIComponent(state.project.id):'/editor';
 }

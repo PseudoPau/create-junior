@@ -54,6 +54,30 @@ def add_item(payload: dict) -> dict:
     return item
 
 
+def set_quantity(item_id: str, quantity: int) -> list[dict]:
+    """Set an item quantity; zero removes it from the warehouse."""
+    try:
+        quantity = int(quantity)
+    except (TypeError, ValueError):
+        raise ValueError("数量必须是整数。") from None
+    if quantity < 0 or quantity > 10000:
+        raise ValueError("数量必须在 0 到 10000 之间。")
+    items = _read()
+    item = next((entry for entry in items if entry.get("id") == item_id), None)
+    if item is None:
+        raise ValueError("仓库条目不存在。")
+    if quantity == 0:
+        items = [entry for entry in items if entry.get("id") != item_id]
+    else:
+        item["quantity"] = quantity
+    PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = PATH.with_suffix(".tmp")
+    temporary.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.chmod(0o600)
+    temporary.replace(PATH)
+    return items
+
+
 def delete_item(item_id: str) -> list[dict]:
     items = [item for item in _read() if item.get("id") != item_id]
     PATH.parent.mkdir(parents=True, exist_ok=True)

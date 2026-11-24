@@ -31,6 +31,7 @@ let dirty = false;
 let proposal = null;
 let conflict = null;
 let previewParts = null;
+let previewJoints = null;
 let leftTab = 'objects';
 let warehouseData = null;
 let warehouseItems = [];
@@ -109,7 +110,7 @@ function initViewport() {
 async function openProject(id) {
   project = await api('/projects/' + encodeURIComponent(id));
   try { reviewData = await api('/projects/' + encodeURIComponent(id) + '/review'); } catch { reviewData = null; }
-  selectedId = null; selectedIds = new Set(); selectedKind = null; leftTab = 'objects'; warehouseData = null; checkData = null; dirty = false; undoStack = []; redoStack = [];
+  selectedId = null; selectedIds = new Set(); selectedKind = null; previewJoints = null; leftTab = 'objects'; warehouseData = null; checkData = null; dirty = false; undoStack = []; redoStack = [];
   if (!project.parts.length) {
     showEmpty('这个项目还没有可编辑模型。先回主线形成第一版，或者打开样例。');
     return;
@@ -176,6 +177,10 @@ function hardwareTotals() {
   return [...totals.entries()].map(([key, quantity]) => { const [name, spec] = key.split('|'); return { name, spec, quantity }; });
 }
 
+function warehouseIconButton(kind, title, handler) {
+  return el('button', { type: 'button', class: 'mini ' + kind, title, 'aria-label': title, onclick: handler }, kind === 'add' ? '+' : '−');
+}
+function warehouseQty(quantity) { return el('span', { class: 'qty-badge' }, '×' + quantity); }
 function renderWarehouse() {
   const tree = $('tree');
   tree.replaceChildren();
@@ -186,8 +191,12 @@ function renderWarehouse() {
   if (warehouseItems.length) {
     for (const item of warehouseItems) {
       tree.append(el('div', { class: 'warehouse-item' },
-        el('div', { class: 'warehouse-head' }, el('b', {}, item.name), el('button', { type: 'button', class: 'ghost', onclick: () => deleteWarehouse(item.id) }, '删除')),
-        el('small', {}, [item.dims, item.spec, item.quantity + ' 件'].filter(Boolean).join(' · '))));
+        el('div', { class: 'warehouse-head' },
+          el('div', { class: 'warehouse-name' }, el('b', {}, item.name), warehouseQty(item.quantity)),
+          el('div', { class: 'qty-actions' },
+            warehouseIconButton('remove', '出库 1 件（到 0 时删除）', () => updateWarehouseQuantity(item.id, -1)),
+            warehouseIconButton('add', '入库 1 件', () => updateWarehouseQuantity(item.id, 1)))),
+        el('small', {}, [item.dims, item.spec].filter(Boolean).join(' · '))));
     }
   } else {
     tree.append(el('div', { class: 'warehouse-empty' }, '还没有手动入库的余料。'));
@@ -197,7 +206,7 @@ function renderWarehouse() {
     for (const line of lines) {
       const stock = (line.stock_dimensions_mm || []).map(value => Math.round(value)).join(' × ');
       tree.append(el('div', { class: 'warehouse-item' },
-        el('b', {}, line.name),
+        el('b', {}, line.name), warehouseQty(line.sheet_count ?? 0),
         el('small', {}, stock + ' mm · ' + (line.sheet_count ?? '—') + ' 张'),
         el('small', {}, '利用率 ' + (line.utilization == null ? '—' : Math.round(line.utilization * 100) + '%') + ' · 余料约 ' + (line.offcut == null ? '—' : Math.round(line.offcut * 100) + '%'))));
     }
@@ -210,7 +219,9 @@ function renderWarehouse() {
   const hardware = warehouseData?.hardware?.length ? warehouseData.hardware : hardwareTotals();
   for (const item of hardware) {
     tree.append(el('div', { class: 'warehouse-item' },
-      el('div', { class: 'warehouse-head' }, el('b', {}, item.name), el('button', { type: 'button', class: 'ghost', onclick: () => addWarehouse({ name: item.name, kind: 'hardware', spec: item.spec, quantity: item.quantity, note: '来自本项目五金清单' }) }, '入库')),
+      el('div', { class: 'warehouse-head' },
+        el('div', { class: 'warehouse-name' }, el('b', {}, item.name), warehouseQty(item.quantity)),
+        warehouseIconButton('add', '入库 1 组', () => addWarehouse({ name: item.name, kind: 'hardware', spec: item.spec, quantity: item.quantity, note: '来自本项目五金清单' }))),
       el('small', {}, item.spec + ' · ' + item.quantity + ' 件')));
   }
   tree.append(el('div', { class: 'group-title' }, '下料余料'));
@@ -218,7 +229,9 @@ function renderWarehouse() {
   if (offcuts.length) {
     for (const item of offcuts) {
       tree.append(el('div', { class: 'warehouse-item' },
-        el('div', { class: 'warehouse-head' }, el('b', {}, item.name), el('button', { type: 'button', class: 'ghost', onclick: () => addWarehouse({ name: item.name, kind: 'sheet', dims: item.dims + ' mm', quantity: 1, note: '来自本项目第 ' + item.sheet + ' 张板' }) }, '入库')),
+        el('div', { class: 'warehouse-head' },
+          el('div', { class: 'warehouse-name' }, el('b', {}, item.name + ' ' + item.dims), warehouseQty(1)),
+          warehouseIconButton('add', '入库这块余料', () => addWarehouse({ name: item.name, kind: 'sheet', dims: item.dims + ' mm', quantity: 1, note: '来自本项目第 ' + item.sheet + ' 张板' }))),
         el('small', {}, item.dims + ' mm · 第 ' + item.sheet + ' 张板')));
     }
   } else {
@@ -230,6 +243,20 @@ async function addWarehouse(item) {
   try {
     await api('/warehouse', payload('POST', item));
     const wh = await api('/warehouse');
+    warehouseItems = wh.items || [];
+    render();
+  } catch (error) {
+    showRightError(error.message);
+  }
+}
+
+async function updateWarehouseQuantity(id, delta) {
+  const item = warehouseItems.find(entry => entry.id === id);
+  if (!item) return;
+  const quantity = Number(item.quantity) + delta;
+  try {
+    if (quantity <= 0) { await deleteWarehouse(id); return; }
+    const wh = await api('/warehouse/' + encodeURIComponent(id), payload('PATCH', { quantity }));
     warehouseItems = wh.items || [];
     render();
   } catch (error) {
@@ -823,11 +850,13 @@ async function acceptPreview() {
   if (!proposal) return;
   const before = project.revision;
   try {
-    const accepted = (proposal.kind === 'transform' || proposal.kind === 'holes' || proposal.kind === 'features' || proposal.kind === 'pair' || proposal.kind === 'batch-material')
+    const accepted = proposal.kind === 'delete'
+      ? await api('/projects/' + encodeURIComponent(project.id), payload('PUT', { expected_revision: project.revision, patch: { parts: previewParts, joints: previewJoints || project.joints } }))
+      : (proposal.kind === 'transform' || proposal.kind === 'holes' || proposal.kind === 'features' || proposal.kind === 'pair' || proposal.kind === 'batch-material')
       ? await api('/projects/' + encodeURIComponent(project.id), payload('PUT', { expected_revision: project.revision, patch: { parts: previewParts } }))
       : await api('/projects/' + encodeURIComponent(project.id) + '/proposal/accept',
         payload('POST', { expected_revision: project.revision, proposal_id: proposal.id, accept_connections: false }));
-    project = accepted; proposal = null; conflict = null; previewParts = null; dirty = false; checkData = null; selectedIds = new Set([selectedId].filter(Boolean));
+    project = accepted; proposal = null; conflict = null; previewParts = null; previewJoints = null; dirty = false; checkData = null; selectedIds = new Set([selectedId].filter(Boolean));
     undoStack.push({ before, after: accepted.revision }); redoStack = [];
     try { reviewData = await api('/projects/' + encodeURIComponent(project.id) + '/review'); } catch { reviewData = null; }
     viewport?.load(project.parts, { fit: false, hardware: [], joints: project.joints });
@@ -839,7 +868,7 @@ async function acceptPreview() {
 }
 
 function cancelPreview() {
-  proposal = null; conflict = null; previewParts = null;
+  proposal = null; conflict = null; previewParts = null; previewJoints = null;
   if (viewport && project) viewport.load(project.parts, { fit: false, hardware: [], joints: project.joints });
   if (selectedId) viewport?.setSelection(selectedId);
   render();
@@ -909,7 +938,7 @@ function renderMeasure(value) {
 
 function updateTools() {
   document.querySelectorAll('[data-tool]').forEach(button => button.classList.toggle('on', button.dataset.tool === tool));
-  $('status-text').textContent = tool === 'measure' ? '测量中' : tool === 'translate' ? '拖动移动' : tool === 'rotate' ? '拖动旋转' : tool === 'advanced' ? '高级工具' : '编辑器';
+  $('status-text').textContent = tool === 'measure' ? '测量中' : tool === 'translate' ? '拖动移动' : tool === 'rotate' ? '拖动旋转' : tool === 'scale' ? '拉伸' : tool === 'advanced' ? '高级工具' : '编辑器';
 }
 
 function activeEditorIds(){return selectedIds.size?[...selectedIds]:selectedId?[selectedId]:[];}
@@ -960,6 +989,20 @@ function renderAdvancedPanel() {
   );
   $('right-foot').hidden = true;
 }
+function deleteSelectedParts() {
+  if (!project) return;
+  const ids = activeEditorIds();
+  if (!ids.length) { showRightError('先选中要删除的部件。'); return; }
+  const next = structuredClone(project);
+  next.parts = next.parts.filter(part => !ids.includes(part.id));
+  next.joints = (next.joints || []).filter(joint => !(joint.part_ids || []).some(id => ids.includes(id)));
+  previewParts = next.parts;
+  previewJoints = next.joints;
+  proposal = { kind: 'delete', summary: '删除 ' + ids.length + ' 件板件及关联连接。' };
+  conflict = null; selectedId = null; selectedIds = new Set(); selectedKind = null;
+  viewport?.load(previewParts, { fit: false, hardware: [], joints: previewJoints });
+  render();
+}
 function setTool(next) {
   tool = next;
   if (next === 'advanced') {
@@ -969,7 +1012,7 @@ function setTool(next) {
     updateTools();
     return;
   }
-  const viewportTool = ['measure', 'translate', 'rotate'].includes(next) ? next : 'select';
+  const viewportTool = ['measure', 'translate', 'rotate', 'scale'].includes(next) ? next : 'select';
   viewport?.setTool(viewportTool);
   if (next === 'measure') {
     $('measure-hud').hidden = false;
@@ -985,6 +1028,7 @@ function setTool(next) {
 }
 
 window.addEventListener('keydown', event => {
+  if ((event.key === 'Delete' || event.key === 'Backspace') && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName) && activeEditorIds().length) { event.preventDefault(); deleteSelectedParts(); return; }
   if (event.key === 'Escape' && tool === 'measure') {
     viewport?.clearMeasurement();
     $('measure-hud').hidden = true;
@@ -994,6 +1038,7 @@ window.addEventListener('keydown', event => {
 $('undo-button').addEventListener('click', () => undoRedo(false));
 $('redo-button').addEventListener('click', () => undoRedo(true));
 document.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => setTool(button.dataset.tool)));
+document.querySelectorAll('[data-action="delete"]').forEach(button => button.addEventListener('click', deleteSelectedParts));
 document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
   document.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('on', item === button));
   viewport?.setView(button.dataset.view);
