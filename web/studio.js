@@ -337,17 +337,9 @@ function workflowStatus(){
   return [model,dimensionsDone,methodsDone,packageDone];
 }
 function renderStageNav(index){
-  const outputs=['参考 → 第一版模型','身体 → 五项尺寸','板件 / 连接 → 做法','采购 / 图纸 / 装配'];
-  const actions=['把参考变成可编辑模型','确定这次制作的目标尺寸','确认板件和连接做法','生成可交付的加工包'];
-  const done=workflowStatus();
-  $('stage-nav').replaceChildren(...STAGES.map((label,i)=>el('button',{type:'button','aria-current':i===index?'step':null,disabled:state.busy,class:(i===index?'on ':'')+(done[i]?'done':''),onClick:()=>action(()=>switchStage(i))},
-    el('span',{class:'wf-num'},String(i+1).padStart(2,'0')),
-    el('span',{class:'wf-copy'},el('b',{},label),el('small',{},outputs[i])),
-    el('span',{class:'wf-mark'},done[i]?'✓':i===index?'当前':'')
-  )));
-  const now=$('stage-nav').querySelector('[aria-current=step]');
-  if(now)now.setAttribute('title',actions[index]);
+  $('stage-nav').replaceChildren(...STAGES.map((label,i)=>el('button',{type:'button','aria-current':i===index?'step':null,disabled:state.busy,onClick:()=>action(()=>switchStage(i))},el('span',{},String(i+1).padStart(2,'0')),label)));
 }
+
 function render(){const index=stageIndex();document.body.dataset.stage=STAGES[index];document.body.dataset.page=state.page;body.replaceChildren();actions.replaceChildren();$('step-error').textContent=state.error;$('step-error').hidden=!state.error;renderStageNav(index);
   if(state.page==='settings')renderSettings();else if(state.page.startsWith('P'))renderPackage();else if(['R2','F2','M4'].includes(state.page))renderWaiting();else ({R1:renderEntry,R4:renderRestore,R5:renderRestoreEdit,F1:renderProfile,F6:renderProfilePosture,F3:renderDimension,F4:renderConflict,F5:renderSizeSummary,M1:renderMethods,M2:renderBoard,M3:renderMethodEdit,M5:renderMethodPreview,M8:renderNode,M9:renderMethodSummary,M6:renderUnresolved}[state.page]||renderEntry)();
   renderViewport();renderContext();renderAIRail();renderBusy();$('project-picker').value=state.project?.id||'';const modeEditor=$('mode-editor');if(modeEditor)modeEditor.href=state.project?.parts?.length?'/editor?project='+encodeURIComponent(state.project.id):'/editor';

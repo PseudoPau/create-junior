@@ -34,8 +34,8 @@ def add_item(payload: dict) -> dict:
     kind = str(payload.get("kind") or "sheet").strip()
     if not name:
         raise ValueError("仓库条目需要名称。")
-    if kind not in {"sheet", "hardware", "consumable"}:
-        raise ValueError("仓库条目类型必须是 sheet、hardware 或 consumable。")
+    if kind not in {"sheet", "profile", "hardware", "consumable"}:
+        raise ValueError("仓库条目类型必须是 sheet、profile、hardware 或 consumable。")
     try:
         quantity = int(1 if payload.get("quantity") is None else payload.get("quantity"))
     except (TypeError, ValueError):

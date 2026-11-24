@@ -35,6 +35,7 @@ let previewJoints = null;
 let leftTab = 'objects';
 let warehouseData = null;
 let warehouseItems = [];
+let warehouseCategory = 'sheet';
 let reviewData = null;
 let docsData = null;
 let cutData = null;
@@ -110,7 +111,7 @@ function initViewport() {
 async function openProject(id) {
   project = await api('/projects/' + encodeURIComponent(id));
   try { reviewData = await api('/projects/' + encodeURIComponent(id) + '/review'); } catch { reviewData = null; }
-  selectedId = null; selectedIds = new Set(); selectedKind = null; previewJoints = null; leftTab = 'objects'; warehouseData = null; checkData = null; dirty = false; undoStack = []; redoStack = [];
+  selectedId = null; selectedIds = new Set(); selectedKind = null; previewJoints = null; warehouseCategory = 'sheet'; leftTab = 'objects'; warehouseData = null; checkData = null; dirty = false; undoStack = []; redoStack = [];
   if (!project.parts.length) {
     showEmpty('这个项目还没有可编辑模型。先回主线形成第一版，或者打开样例。');
     return;
@@ -177,65 +178,71 @@ function hardwareTotals() {
   return [...totals.entries()].map(([key, quantity]) => { const [name, spec] = key.split('|'); return { name, spec, quantity }; });
 }
 
+const WAREHOUSE_CATEGORIES = [
+  { key: 'sheet', label: '板材', hint: '整板、余料', className: 'sheet' },
+  { key: 'profile', label: '型材', hint: '木条、金属型材', className: 'profile' },
+  { key: 'hardware', label: '五金件', hint: '螺丝、连接件', className: 'hardware' },
+];
 function warehouseIconButton(kind, title, handler) {
   return el('button', { type: 'button', class: 'mini ' + kind, title, 'aria-label': title, onclick: handler }, kind === 'add' ? '+' : '−');
 }
 function warehouseQty(quantity) { return el('span', { class: 'qty-badge' }, '×' + quantity); }
+function warehouseCategoryItems() { return warehouseItems.filter(item => (item.kind || 'sheet') === warehouseCategory); }
+function warehouseItemCard(item) {
+  const category = WAREHOUSE_CATEGORIES.find(entry => entry.key === (item.kind || 'sheet')) || WAREHOUSE_CATEGORIES[0];
+  return el('div', { class: 'wh-card' },
+    el('div', { class: 'wh-visual ' + category.className }),
+    el('div', { class: 'wh-copy' }, el('b', {}, item.name), el('small', {}, [item.dims, item.spec].filter(Boolean).join(' · ') || category.hint)),
+    warehouseQty(item.quantity),
+    el('div', { class: 'qty-actions' },
+      warehouseIconButton('remove', '出库 1 件（到 0 时删除）', () => updateWarehouseQuantity(item.id, -1)),
+      warehouseIconButton('add', '入库 1 件', () => updateWarehouseQuantity(item.id, 1))));
+}
+function warehouseSuggestionCard(name, detail, category, quantity = 1, note = '来自当前项目') {
+  return el('div', { class: 'wh-suggestion' },
+    el('div', { class: 'wh-visual ' + category }),
+    el('div', { class: 'wh-copy' }, el('b', {}, name), el('small', {}, detail)),
+    warehouseIconButton('add', '入库到' + (WAREHOUSE_CATEGORIES.find(entry => entry.key === category)?.label || '仓库'), () => addWarehouse({ name, kind: category, spec: category === 'hardware' ? detail : '', dims: category === 'hardware' ? '' : detail, quantity, note })));
+}
+function addWarehouseFromForm() {
+  const name = document.querySelector('[data-wh-name]')?.value.trim();
+  const detail = document.querySelector('[data-wh-detail]')?.value.trim();
+  const quantity = Number(document.querySelector('[data-wh-qty]')?.value || 1);
+  if (!name) { showRightError('先填名称。'); return; }
+  addWarehouse({ name, kind: warehouseCategory, dims: warehouseCategory === 'hardware' ? '' : detail, spec: warehouseCategory === 'hardware' ? detail : '', quantity, note: '手动入库' });
+}
 function renderWarehouse() {
   const tree = $('tree');
   tree.replaceChildren();
   $('left-count').textContent = '仓库';
-  const plan = warehouseData?.material_plan;
-  const lines = plan?.materials || [];
-  tree.append(el('div', { class: 'group-title' }, '已入库'));
-  if (warehouseItems.length) {
-    for (const item of warehouseItems) {
-      tree.append(el('div', { class: 'warehouse-item' },
-        el('div', { class: 'warehouse-head' },
-          el('div', { class: 'warehouse-name' }, el('b', {}, item.name), warehouseQty(item.quantity)),
-          el('div', { class: 'qty-actions' },
-            warehouseIconButton('remove', '出库 1 件（到 0 时删除）', () => updateWarehouseQuantity(item.id, -1)),
-            warehouseIconButton('add', '入库 1 件', () => updateWarehouseQuantity(item.id, 1)))),
-        el('small', {}, [item.dims, item.spec].filter(Boolean).join(' · '))));
-    }
-  } else {
-    tree.append(el('div', { class: 'warehouse-empty' }, '还没有手动入库的余料。'));
-  }
-  tree.append(el('div', { class: 'group-title' }, '本项目板材'));
-  if (lines.length) {
-    for (const line of lines) {
+  const plans = warehouseData?.material_plan?.materials || [];
+  const counts = Object.fromEntries(WAREHOUSE_CATEGORIES.map(category => [category.key, warehouseItems.filter(item => (item.kind || 'sheet') === category.key).length]));
+  tree.append(el('div', { class: 'wh-tabs' }, ...WAREHOUSE_CATEGORIES.map(category => el('button', { type: 'button', class: warehouseCategory === category.key ? 'on' : '', 'aria-pressed': warehouseCategory === category.key, onclick: () => { warehouseCategory = category.key; render(); } }, category.label + (counts[category.key] ? ' · ' + counts[category.key] : '')))));
+  const category = WAREHOUSE_CATEGORIES.find(entry => entry.key === warehouseCategory) || WAREHOUSE_CATEGORIES[0];
+  tree.append(el('div', { class: 'wh-heading' }, el('b', {}, category.label), el('small', {}, category.hint)));
+  const items = warehouseCategoryItems();
+  if (items.length) tree.append(el('div', { class: 'wh-list' }, ...items.map(warehouseItemCard)));
+  else tree.append(el('div', { class: 'warehouse-empty' }, '这个类别还没有入库记录。'));
+  tree.append(el('div', { class: 'wh-add' },
+    el('input', { placeholder: category.key === 'hardware' ? '名称，如 M6 螺栓' : '名称，如 榉木余料', 'data-wh-name': '' }),
+    el('input', { placeholder: category.key === 'hardware' ? '规格，如 M6 × 60' : '尺寸，如 320 × 180 mm', 'data-wh-detail': '' }),
+    el('input', { type: 'number', min: '1', value: '1', placeholder: '数量', 'aria-label': '数量', 'data-wh-qty': '' }),
+    el('button', { type: 'button', class: 'primary', onclick: addWarehouseFromForm }, '+ 入库')));
+  tree.append(el('div', { class: 'wh-heading' }, el('b', {}, '本项目可用'), el('small', {}, '点 + 入库')));
+  if (warehouseCategory === 'hardware') {
+    const hardware = warehouseData?.hardware?.length ? warehouseData.hardware : hardwareTotals();
+    if (hardware.length) tree.append(el('div', { class: 'wh-list' }, ...hardware.map(item => warehouseSuggestionCard(item.name, item.spec + ' · ' + item.quantity + ' 件', 'hardware', item.quantity, '来自本项目五金清单'))));
+    else tree.append(el('div', { class: 'warehouse-empty' }, '当前项目没有五金。'));
+  } else if (warehouseCategory === 'sheet') {
+    if (plans.length) tree.append(el('div', { class: 'wh-list' }, ...plans.map(line => {
       const stock = (line.stock_dimensions_mm || []).map(value => Math.round(value)).join(' × ');
-      tree.append(el('div', { class: 'warehouse-item' },
-        el('b', {}, line.name), warehouseQty(line.sheet_count ?? 0),
-        el('small', {}, stock + ' mm · ' + (line.sheet_count ?? '—') + ' 张'),
-        el('small', {}, '利用率 ' + (line.utilization == null ? '—' : Math.round(line.utilization * 100) + '%') + ' · 余料约 ' + (line.offcut == null ? '—' : Math.round(line.offcut * 100) + '%'))));
-    }
+      return warehouseSuggestionCard(line.name, stock + ' mm · ' + (line.sheet_count ?? '—') + ' 张', 'sheet', 1, '来自本项目板材');
+    })));
+    const offcuts = planOffcuts(plans);
+    if (offcuts.length) tree.append(el('div', { class: 'wh-list' }, ...offcuts.map(item => warehouseSuggestionCard(item.name + ' ' + item.dims, item.dims + ' mm · 第 ' + item.sheet + ' 张板', 'sheet'))));
+    if (!plans.length && !offcuts.length) tree.append(el('div', { class: 'warehouse-empty' }, '生成加工包后，这里列出可用余料。'));
   } else {
-    for (const material of Object.values(project.materials || {})) {
-      tree.append(el('div', { class: 'warehouse-item' }, el('b', {}, material.name), el('small', {}, '尚未生成整板排板')));
-    }
-  }
-  tree.append(el('div', { class: 'group-title' }, '五金'));
-  const hardware = warehouseData?.hardware?.length ? warehouseData.hardware : hardwareTotals();
-  for (const item of hardware) {
-    tree.append(el('div', { class: 'warehouse-item' },
-      el('div', { class: 'warehouse-head' },
-        el('div', { class: 'warehouse-name' }, el('b', {}, item.name), warehouseQty(item.quantity)),
-        warehouseIconButton('add', '入库 1 组', () => addWarehouse({ name: item.name, kind: 'hardware', spec: item.spec, quantity: item.quantity, note: '来自本项目五金清单' }))),
-      el('small', {}, item.spec + ' · ' + item.quantity + ' 件')));
-  }
-  tree.append(el('div', { class: 'group-title' }, '下料余料'));
-  const offcuts = planOffcuts(lines);
-  if (offcuts.length) {
-    for (const item of offcuts) {
-      tree.append(el('div', { class: 'warehouse-item' },
-        el('div', { class: 'warehouse-head' },
-          el('div', { class: 'warehouse-name' }, el('b', {}, item.name + ' ' + item.dims), warehouseQty(1)),
-          warehouseIconButton('add', '入库这块余料', () => addWarehouse({ name: item.name, kind: 'sheet', dims: item.dims + ' mm', quantity: 1, note: '来自本项目第 ' + item.sheet + ' 张板' }))),
-        el('small', {}, item.dims + ' mm · 第 ' + item.sheet + ' 张板')));
-    }
-  } else {
-    tree.append(el('div', { class: 'warehouse-empty' }, '生成加工包后，这里列出整板排版留下的可用矩形。'));
+    tree.append(el('div', { class: 'warehouse-empty' }, '当前项目没有生成型材清单。'));
   }
 }
 
@@ -504,13 +511,9 @@ function renderRight() {
       foot.hidden = true;
       return;
     }
-    body.replaceChildren(
-      el('div', { class: 'section' }, el('h3', {}, '尺寸'), el('div', { class: 'row3' }, length.node, width.node, thickness.node)),
-      el('div', { class: 'section' }, el('h3', {}, '材料'),
-        el('div', { class: 'material-row' }, el('span', { class: 'swatch' }), el('div', {}, el('b', {}, (project.materials?.[part.material_id]?.name) || part.material_id), el('small', {}, '材料选择在下方应用')))),
-      el('div', { class: 'field' }, '更换材料', material),
-      holeSection(part),
-      el('div', { class: 'section' }, el('h3', {}, '位置 / 旋转'),
+    const dimText = [dims.length, dims.width, dims.thickness].map(fmt).join(' × ');
+    const positionDetails = el('details', { class: 'section' }, el('summary', {}, '位置 / 旋转'),
+      el('div', { class: 'details-body' },
         el('div', { class: 'row3' },
           field('X · mm', part.position_mm?.[0], { 'data-transform': 'px' }).node,
           field('Y · mm', part.position_mm?.[1], { 'data-transform': 'py' }).node,
@@ -519,9 +522,16 @@ function renderRight() {
           field('RX · °', part.rotation_deg?.[0], { 'data-transform': 'rx' }).node,
           field('RY · °', part.rotation_deg?.[1], { 'data-transform': 'ry' }).node,
           field('RZ · °', part.rotation_deg?.[2], { 'data-transform': 'rz' }).node),
-        el('p', { class: 'error' }, '拖动或输入数值；采用后连接检查重跑。'),
-        el('button', { type: 'button', class: 'ghost', onclick: () => previewTransform(part.id) }, '预览位置/旋转')),
-      el('div', { class: 'section' }, el('h3', {}, '连接'), joints.length ? jointList : el('p', { class: 'error' }, '这个零件没有已定义连接。')),
+        el('button', { type: 'button', class: 'ghost', onclick: () => previewTransform(part.id) }, '预览位置/旋转')));
+    const featureDetails = el('details', { class: 'section' }, el('summary', {}, '孔槽 / 加工特征'), el('div', { class: 'details-body' }, holeSection(part)));
+    const jointDetails = el('details', { class: 'section' }, el('summary', {}, '连接 · ' + joints.length), el('div', { class: 'details-body' }, joints.length ? jointList : el('p', { class: 'error' }, '这个零件没有已定义连接。')));
+    body.replaceChildren(
+      el('div', { class: 'part-summary' },
+        el('span', { class: 'board-thumb' }),
+        el('div', { class: 'part-summary-copy' }, el('b', {}, part.name), el('small', {}, dimText + ' mm'), el('span', { class: 'chip' }, project.materials?.[part.material_id]?.name || part.material_id))),
+      el('div', { class: 'section' }, el('h3', {}, '尺寸'), el('div', { class: 'row3' }, length.node, width.node, thickness.node)),
+      el('div', { class: 'section' }, el('h3', {}, '材料'), el('div', { class: 'material-row' }, el('span', { class: 'swatch' }), el('div', {}, el('b', {}, project.materials?.[part.material_id]?.name || part.material_id))), el('label', { class: 'field' }, '更换材料', material)),
+      positionDetails, featureDetails, jointDetails
     );
     foot.hidden = false;
     $('apply-edit').textContent = '预览修改';
@@ -559,17 +569,16 @@ function renderRight() {
     ['kit', '下料套件（加工店下料/打孔，我装配）'],
     ['shop', '加工店制件，我装配'],
   ].map(([value, label]) => el('option', { value, selected: project.fabrication_mode === value }, label)));
+  const materials = Object.values(project.materials || {});
   body.replaceChildren(
-    el('div', { class: 'section' }, el('h3', {}, '概览'),
-      el('p', {}, project.parts.length + ' 件 · ' + project.joints.length + ' 处连接'),
-      el('p', {}, '材料：' + Object.values(project.materials || {}).map(item => item.name).join('、'))),
-    el('div', { class: 'section' }, el('h3', {}, '交付方式'),
-      el('p', {}, '谁下料、谁装配。会改变加工包章节和预算口径。'),
-      delivery,
-      el('button', { type: 'button', class: 'ghost', onclick: () => applyDelivery(delivery.value) }, '应用交付方式')),
-    el('div', { class: 'section' }, el('h3', {}, '检查'),
-      el('p', {}, '碰撞、连接性、承重草算；按需运行，修改后要重跑。'),
-      el('button', { type: 'button', class: 'ghost', onclick: runCheck }, '检查整椅')),
+    el('div', { class: 'overview-stats' },
+      el('div', { class: 'stat-card' }, el('strong', {}, project.parts.length), el('span', {}, '板件')),
+      el('div', { class: 'stat-card' }, el('strong', {}, project.joints.length), el('span', {}, '连接')),
+      el('div', { class: 'stat-card' }, el('strong', {}, materials.length), el('span', {}, '材料'))),
+    el('div', { class: 'material-strip' }, ...materials.slice(0, 4).map(item => el('span', { class: 'material-chip' }, el('i', { class: 'swatch' }), item.name))),
+    el('div', { class: 'panel-card' }, el('div', { class: 'panel-card-head' }, el('h3', {}, '交付方式'), el('span', { class: 'chip' }, project.fabrication_mode === 'kit' ? '下料套件' : project.fabrication_mode === 'shop' ? '加工店制件' : '自己做')), delivery,
+      el('button', { type: 'button', class: 'ghost', onclick: () => applyDelivery(delivery.value) }, '应用')),
+    el('div', { class: 'panel-card' }, el('div', { class: 'panel-card-head' }, el('h3', {}, '检查'), el('span', { class: 'chip' }, '按需')), el('button', { type: 'button', class: 'ghost', onclick: runCheck }, '检查整椅'))
   );
   foot.hidden = true;
 }
