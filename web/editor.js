@@ -898,6 +898,8 @@ function renderMeasure(value) {
   const hud = $('measure-hud');
   if (!value) { hud.hidden = true; return; }
   hud.hidden = false;
+  if (value.preview === false) { hud.replaceChildren('点选端点或中点作为起点'); return; }
+  if (value.preview) { hud.replaceChildren('吸附：' + (value.snap || '面') + ' · 点击定起点'); return; }
   if (value.pending) { hud.replaceChildren('起点已定 · ' + (value.snap || '吸附') + ' · 移到终点'); return; }
   if (value.hover && value.distance_mm !== undefined) { hud.replaceChildren(el('strong', {}, fmt(value.distance_mm) + ' mm'), el('span', {}, (value.snap || '') + ' · 点击确定 · Esc 退出')); return; }
   if (value.distance_mm !== undefined) {
@@ -962,6 +964,7 @@ function setTool(next) {
   tool = next;
   if (next === 'advanced') {
     viewport?.setTool('select');
+    $('measure-hud').hidden = true;
     renderAdvancedPanel();
     updateTools();
     return;

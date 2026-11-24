@@ -211,24 +211,38 @@ export class WorkshopViewport {
     const corners = [new THREE.Vector3(min.x,min.y,min.z),new THREE.Vector3(min.x,min.y,max.z),new THREE.Vector3(min.x,max.y,min.z),new THREE.Vector3(min.x,max.y,max.z),new THREE.Vector3(max.x,min.y,min.z),new THREE.Vector3(max.x,min.y,max.z),new THREE.Vector3(max.x,max.y,min.z),new THREE.Vector3(max.x,max.y,max.z)];
     const mids = [];
     for (let i=0;i<8;i++) for (let j=i+1;j<8;j++) { let diff=0; for (const axis of ['x','y','z']) if (Math.abs(corners[i][axis]-corners[j][axis])>1e-6) diff++; if (diff===1) mids.push(corners[i].clone().add(corners[j]).multiplyScalar(.5)); }
-    let best=null,bestType='',bestDistance=Infinity;
-    for (const candidate of corners) { const distance=candidate.distanceTo(point); if (distance<bestDistance) { best=candidate; bestType='端点'; bestDistance=distance; } }
-    for (const candidate of mids) { const distance=candidate.distanceTo(point); if (distance<bestDistance) { best=candidate; bestType='中点'; bestDistance=distance; } }
-    return bestDistance <= 38 ? { point: best, type: bestType } : { point, type: '面' };
+    const faces = [new THREE.Vector3(0,min.y,0),new THREE.Vector3(0,0,min.z),new THREE.Vector3(min.x,0,0),new THREE.Vector3(max.x,0,0),new THREE.Vector3(0,max.y,0),new THREE.Vector3(0,0,max.z)];
+    const centers = [new THREE.Vector3((min.x+max.x)/2,(min.y+max.y)/2,(min.z+max.z)/2)];
+    const candidates = [...corners.map(p=>({point:p,type:'端点'})),...mids.map(p=>({point:p,type:'中点'})),...faces.map(p=>({point:p,type:'面心'})),...centers.map(p=>({point:p,type:'中心'}))];
+    // Include the closest point on each bounding-box edge for edge inference.
+    for (let i=0;i<corners.length;i++) for (let j=i+1;j<corners.length;j++) {
+      let diff=0; for (const axis of ['x','y','z']) if (Math.abs(corners[i][axis]-corners[j][axis])>1e-6) diff++;
+      if (diff!==1) continue;
+      const a=corners[i],b=corners[j],ab=b.clone().sub(a);const t=Math.max(0,Math.min(1,point.clone().sub(a).dot(ab)/ab.lengthSq()));candidates.push({point:a.clone().addScaledVector(ab,t),type:'边'});
+    }
+    let best=null,bestDistance=Infinity;
+    for (const candidate of candidates) { const distance=candidate.point.distanceTo(point); if (distance<bestDistance) { best=candidate; bestDistance=distance; } }
+    return bestDistance <= 55 ? { point: best.point, type: best.type } : { point, type: '面' };
   }
   showSnapMarker(point, type) {
     if (!this.snapMarker) {
-      this.snapMarker = new THREE.Mesh(new THREE.SphereGeometry(6, 12, 12), new THREE.MeshBasicMaterial({color:this.palette.accent,depthTest:false}));
+      this.snapMarker = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 12), new THREE.MeshBasicMaterial({color:this.palette.accent,depthTest:false}));
       this.snapMarker.renderOrder = 101; this.scene.add(this.snapMarker);
     }
     this.snapMarker.position.copy(point); this.snapMarker.visible = true;
   }
   clearSnapMarker() { if (this.snapMarker) this.snapMarker.visible = false; }
   hoverMeasure(event) {
-    if (this.mode !== 'measure' || this.measurePoints.length !== 1) return;
+    if (this.mode !== 'measure') return;
     const hit = this.partAt(event);
     if (!hit) { this.clearHoverMeasure(); return; }
-    const snapped = this.snapPoint(hit), a = this.measurePoints[0], b = snapped.point;
+    const snapped = this.snapPoint(hit);
+    if (!this.measurePoints.length) {
+      this.showSnapMarker(snapped.point, snapped.type);
+      this.callbacks.onMeasure?.({ preview: true, snap: snapped.type, point: snapped.point.toArray() });
+      return;
+    }
+    const a = this.measurePoints[0], b = snapped.point;
     this.showSnapMarker(b, snapped.type);
     if (!this.hoverMeasureLine) {
       this.hoverMeasureLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), new THREE.LineBasicMaterial({ color: 0xdf643e, transparent: true, opacity: 0.65, depthTest: false }));
@@ -242,12 +256,18 @@ export class WorkshopViewport {
     if (this.hoverMeasureLine) { this.scene.remove(this.hoverMeasureLine); this.release(this.hoverMeasureLine); this.hoverMeasureLine = null; }
     this.clearSnapMarker();
     if (this.mode === 'measure' && this.measurePoints.length === 1) this.callbacks.onMeasure?.({ pending: true });
+    else if (this.mode === 'measure' && !this.measurePoints.length) this.callbacks.onMeasure?.({ preview: false });
   }
   addMeasurePoint(point, snapType = '面') {
-    if (this.measurePoints.length === 2) this.clearMeasurement(); this.measurePoints.push(point.clone()); this.measureSnapTypes.push(snapType);
+    if (this.measurePoints.length === 2) this.clearMeasurement();
+    this.measurePoints.push(point.clone());
+    this.measureSnapTypes.push(snapType);
     if (this.measurePoints.length === 1) { this.callbacks.onMeasure?.({ pending:true, snap:snapType }); return; }
     this.clearHoverMeasure();
-    const [a,b] = this.measurePoints; this.measureLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:0xdf643e,depthTest:false})); this.measureLine.renderOrder=99; this.scene.add(this.measureLine); this.callbacks.onMeasure?.({ distance_mm:a.distanceTo(b), points:[a.toArray(),b.toArray()], snap:[this.measureSnapTypes[0],this.measureSnapTypes[1]].filter(Boolean).join(' → ') });
+    const [a,b] = this.measurePoints;
+    this.measureLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:0xdf643e,depthTest:false}));
+    this.measureLine.renderOrder=99; this.scene.add(this.measureLine);
+    this.callbacks.onMeasure?.({ distance_mm:a.distanceTo(b), points:[a.toArray(),b.toArray()], snap:[this.measureSnapTypes[0],this.measureSnapTypes[1]].filter(Boolean).join(' → ') });
   }
   commitTransform() {
     const mesh = this.transform.object; if (!mesh) return;
