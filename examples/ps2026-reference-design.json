@@ -1,0 +1,874 @@
+{
+  "id": "0f3b2e2a-1b6d-4b7e-9a52-2d1c0f1a9e11",
+  "name": "IKEA PS 2026 · 参考重建",
+  "revision": 1,
+  "updated_at": "2026-11-24T11:37:40.665925+00:00",
+  "scope": "supported",
+  "scope_reason": "按 IKEA 公开外形尺寸、16 页装配说明和五金做参考重建；侧板/座板/靠背曲线与孔位为推断。",
+  "references": [
+    {
+      "id": "ps-ref",
+      "name": "IKEA PS 2026 公开资料",
+      "kind": "note",
+      "url": "",
+      "text": "IKEA PS 2026 easy chair, birch 006.210.71；16 页装配说明；外形 50×61×67，座 48×54×32。"
+    }
+  ],
+  "evidence": [
+    {
+      "statement": "外形 50×61×67 cm；座宽 48、座深 54、座高 32 cm；桦木胶合板。",
+      "source_ids": [
+        "ps-ref"
+      ],
+      "status": "observed"
+    },
+    {
+      "statement": "16 页装配说明：6 类五金与拼装顺序；推断 6 块板。",
+      "source_ids": [
+        "ps-ref"
+      ],
+      "status": "observed"
+    },
+    {
+      "statement": "板厚、轮廓、孔位为参考重建推断，非实物测绘。",
+      "source_ids": [
+        "ps-ref"
+      ],
+      "status": "inferred"
+    }
+  ],
+  "assumptions": [
+    "参考重建，非实物测绘：侧板/座板/靠背按矩形近似，未表达曲线与缺口。",
+    "座板/靠背按 464 mm 宽近似 480 mm 净宽；侧板厚 18 mm。",
+    "孔位、偏心件位置为自洽推断，不作为实物尺寸。",
+    "偏心件用 Ø15 锁孔 + Ø6.5 销孔的近似表达，不是完整偏心轮几何。"
+  ],
+  "fabrication_mode": "shop",
+  "baseline_revision": null,
+  "preservation": {
+    "status": "inferred",
+    "source_ids": [
+      "ps-ref"
+    ],
+    "features": [
+      "保留两侧板轮廓与座高比例",
+      "靠背后倾"
+    ],
+    "adjustable_keys": [],
+    "limits": [],
+    "note": "参考重建，不宣称保留原设计细节。"
+  },
+  "design_intent": "restoration",
+  "reconstruction": true,
+  "profile_snapshot": null,
+  "review_state": null,
+  "scale": {
+    "kind": "target",
+    "confirmed": true,
+    "note": "按 IKEA 公开外形 50×61×67 cm 建立参考尺度；非实测。",
+    "length_mm": 500.0
+  },
+  "requirements": {
+    "body_height_mm": null,
+    "load_kg": null,
+    "environment": "indoor",
+    "tools": [],
+    "notes": "参考重建，非实物测绘。"
+  },
+  "costing": {
+    "currency": "CNY",
+    "cutting_per_sheet": 150.0,
+    "finish_per_sheet": 200.0,
+    "assembly_hours": 2.0,
+    "labor_per_hour": 80.0,
+    "hardware_prices": {
+      "偏心件锁|15 mm": 3.0,
+      "偏心件轮|15 mm": 1.0,
+      "偏心件销|M6 × 24 mm": 0.5
+    },
+    "notes": "参考重建示例费率。",
+    "source": "示例费率，需按当地加工店替换",
+    "quoted_at": ""
+  },
+  "modules": [
+    {
+      "id": "sitting-support",
+      "kind": "support",
+      "name": "坐姿支撑",
+      "purpose": "参考重建的座面与靠背比例",
+      "occupant": "成人",
+      "posture": "坐姿",
+      "anthropometry": {
+        "user_group": "adult"
+      },
+      "target": {
+        "seat_width_mm": 464.0,
+        "seat_depth_mm": 540.0,
+        "seat_height_mm": 320.0
+      },
+      "confirmations": {},
+      "decisions": {},
+      "suggestions": [],
+      "constraints": [],
+      "source_ids": [
+        "ps-ref"
+      ],
+      "status": "target",
+      "affected_part_ids": [
+        "seat",
+        "back",
+        "side_left",
+        "side_right"
+      ],
+      "notes": "参考重建，不作为人体工学结论。"
+    }
+  ],
+  "materials": {
+    "birch18": {
+      "name": "桦木海洋板 · 18 mm（参考重建）",
+      "kind": "panel",
+      "grain_axis": "x",
+      "properties": {},
+      "stock_dimensions_mm": [
+        2440.0,
+        1220.0,
+        18.0
+      ],
+      "price_per_stock": 420.0,
+      "currency": "CNY",
+      "price_note": "参考重建示例单价，需替换"
+    }
+  },
+  "parts": [
+    {
+      "id": "side_left",
+      "name": "左侧板",
+      "kind": "board",
+      "material_id": "birch18",
+      "size_mm": [
+        18.0,
+        670.0,
+        610.0
+      ],
+      "position_mm": [
+        -241.0,
+        335.0,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "outline_mm": null,
+      "plane_cuts": [],
+      "features": [
+        {
+          "id": "sl_s1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "right",
+          "u_mm": 150.0,
+          "v_mm": 311.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "sl_s2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "right",
+          "u_mm": 450.0,
+          "v_mm": 311.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "sl_b1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "right",
+          "u_mm": 150.0,
+          "v_mm": 500.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "sl_b2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "right",
+          "u_mm": 450.0,
+          "v_mm": 500.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        }
+      ]
+    },
+    {
+      "id": "side_right",
+      "name": "右侧板",
+      "kind": "board",
+      "material_id": "birch18",
+      "size_mm": [
+        18.0,
+        670.0,
+        610.0
+      ],
+      "position_mm": [
+        241.0,
+        335.0,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "outline_mm": null,
+      "plane_cuts": [],
+      "features": [
+        {
+          "id": "sr_s1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "left",
+          "u_mm": 150.0,
+          "v_mm": 311.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "sr_s2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "left",
+          "u_mm": 450.0,
+          "v_mm": 311.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "sr_b1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "left",
+          "u_mm": 150.0,
+          "v_mm": 500.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "sr_b2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "left",
+          "u_mm": 450.0,
+          "v_mm": 500.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        }
+      ]
+    },
+    {
+      "id": "seat",
+      "name": "座板",
+      "kind": "board",
+      "material_id": "birch18",
+      "size_mm": [
+        464.0,
+        18.0,
+        540.0
+      ],
+      "position_mm": [
+        0.0,
+        311.0,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "outline_mm": null,
+      "plane_cuts": [],
+      "features": [
+        {
+          "id": "seat_l1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "top",
+          "u_mm": 52.0,
+          "v_mm": 120.0,
+          "diameter_mm": 15.0,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 12.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "seat_l2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "top",
+          "u_mm": 52.0,
+          "v_mm": 420.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "seat_r1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "top",
+          "u_mm": 412.0,
+          "v_mm": 120.0,
+          "diameter_mm": 15.0,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 12.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "seat_r2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "top",
+          "u_mm": 412.0,
+          "v_mm": 420.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        }
+      ]
+    },
+    {
+      "id": "back",
+      "name": "靠背",
+      "kind": "board",
+      "material_id": "birch18",
+      "size_mm": [
+        464.0,
+        300.0,
+        18.0
+      ],
+      "position_mm": [
+        0.0,
+        520.0,
+        -296.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "outline_mm": null,
+      "plane_cuts": [],
+      "features": [
+        {
+          "id": "b_l1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "front",
+          "u_mm": 120.0,
+          "v_mm": 150.0,
+          "diameter_mm": 15.0,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 12.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "b_l2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "front",
+          "u_mm": 120.0,
+          "v_mm": 220.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "b_r1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "front",
+          "u_mm": 344.0,
+          "v_mm": 150.0,
+          "diameter_mm": 15.0,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 12.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "b_r2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "front",
+          "u_mm": 344.0,
+          "v_mm": 220.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        }
+      ]
+    },
+    {
+      "id": "support_left",
+      "name": "左支撑块",
+      "kind": "board",
+      "material_id": "birch18",
+      "size_mm": [
+        80.0,
+        300.0,
+        18.0
+      ],
+      "position_mm": [
+        -200.0,
+        500.0,
+        -279
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "outline_mm": null,
+      "plane_cuts": [],
+      "features": [
+        {
+          "id": "pl_b1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "back",
+          "u_mm": 40.0,
+          "v_mm": 150.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "pl_b2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "back",
+          "u_mm": 40.0,
+          "v_mm": 220.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "pl_s1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "right",
+          "u_mm": 9,
+          "v_mm": 150.0,
+          "diameter_mm": 15.0,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 12.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "pl_s2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "right",
+          "u_mm": 9,
+          "v_mm": 220.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        }
+      ]
+    },
+    {
+      "id": "support_right",
+      "name": "右支撑块",
+      "kind": "board",
+      "material_id": "birch18",
+      "size_mm": [
+        80.0,
+        300.0,
+        18.0
+      ],
+      "position_mm": [
+        200.0,
+        500.0,
+        -279
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "outline_mm": null,
+      "plane_cuts": [],
+      "features": [
+        {
+          "id": "pr_b1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "back",
+          "u_mm": 40.0,
+          "v_mm": 150.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "pr_b2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "back",
+          "u_mm": 40.0,
+          "v_mm": 220.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "pr_s1",
+          "role": "connection",
+          "kind": "hole",
+          "face": "left",
+          "u_mm": 9,
+          "v_mm": 150.0,
+          "diameter_mm": 15.0,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 12.0,
+          "entry_mm": null,
+          "direction_local": null
+        },
+        {
+          "id": "pr_s2",
+          "role": "connection",
+          "kind": "hole",
+          "face": "left",
+          "u_mm": 9,
+          "v_mm": 220.0,
+          "diameter_mm": 6.5,
+          "width_mm": null,
+          "length_mm": null,
+          "depth_mm": 18.0,
+          "entry_mm": null,
+          "direction_local": null
+        }
+      ]
+    }
+  ],
+  "joints": [
+    {
+      "name": "座板—左侧板",
+      "id": "seat_left",
+      "kind": "cam_lock",
+      "part_ids": [
+        "seat",
+        "side_left"
+      ],
+      "feature_ids": [
+        "seat_l1",
+        "seat_l2",
+        "sl_s1",
+        "sl_s2"
+      ],
+      "hardware": [
+        {
+          "name": "偏心件锁",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件轮",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件销",
+          "spec": "M6 × 24 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        }
+      ],
+      "assembly_note": "座板左侧两个偏心件锁紧，销插入侧板。参考重建，孔位为推断。",
+      "confirmed": true
+    },
+    {
+      "name": "座板—右侧板",
+      "id": "seat_right",
+      "kind": "cam_lock",
+      "part_ids": [
+        "seat",
+        "side_right"
+      ],
+      "feature_ids": [
+        "seat_r1",
+        "seat_r2",
+        "sr_s1",
+        "sr_s2"
+      ],
+      "hardware": [
+        {
+          "name": "偏心件锁",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件轮",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件销",
+          "spec": "M6 × 24 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        }
+      ],
+      "assembly_note": "座板右侧两个偏心件锁紧。参考重建。",
+      "confirmed": true
+    },
+    {
+      "name": "靠背—左支撑",
+      "id": "back_left",
+      "kind": "cam_lock",
+      "part_ids": [
+        "back",
+        "support_left"
+      ],
+      "feature_ids": [
+        "b_l1",
+        "b_l2",
+        "pl_b1",
+        "pl_b2"
+      ],
+      "hardware": [
+        {
+          "name": "偏心件锁",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件轮",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件销",
+          "spec": "M6 × 24 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        }
+      ],
+      "assembly_note": "靠背与左支撑偏心件连接。参考重建。",
+      "confirmed": true
+    },
+    {
+      "name": "靠背—右支撑",
+      "id": "back_right",
+      "kind": "cam_lock",
+      "part_ids": [
+        "back",
+        "support_right"
+      ],
+      "feature_ids": [
+        "b_r1",
+        "b_r2",
+        "pr_b1",
+        "pr_b2"
+      ],
+      "hardware": [
+        {
+          "name": "偏心件锁",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件轮",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件销",
+          "spec": "M6 × 24 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        }
+      ],
+      "assembly_note": "靠背与右支撑偏心件连接。参考重建。",
+      "confirmed": true
+    },
+    {
+      "name": "左支撑—左侧板",
+      "id": "support_left_side",
+      "kind": "cam_lock",
+      "part_ids": [
+        "support_left",
+        "side_left"
+      ],
+      "feature_ids": [
+        "pl_s1",
+        "pl_s2",
+        "sl_b1",
+        "sl_b2"
+      ],
+      "hardware": [
+        {
+          "name": "偏心件锁",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件轮",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件销",
+          "spec": "M6 × 24 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        }
+      ],
+      "assembly_note": "左支撑与侧板偏心件连接。参考重建。",
+      "confirmed": true
+    },
+    {
+      "name": "右支撑—右侧板",
+      "id": "support_right_side",
+      "kind": "cam_lock",
+      "part_ids": [
+        "support_right",
+        "side_right"
+      ],
+      "feature_ids": [
+        "pr_s1",
+        "pr_s2",
+        "sr_b1",
+        "sr_b2"
+      ],
+      "hardware": [
+        {
+          "name": "偏心件锁",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件轮",
+          "spec": "15 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        },
+        {
+          "name": "偏心件销",
+          "spec": "M6 × 24 mm",
+          "quantity": 2,
+          "geometry": null,
+          "instances": []
+        }
+      ],
+      "assembly_note": "右支撑与侧板偏心件连接。参考重建。",
+      "confirmed": true
+    }
+  ],
+  "confirmed_revision": 1,
+  "acknowledged_limits": true
+}

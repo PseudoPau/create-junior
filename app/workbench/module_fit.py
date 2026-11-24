@@ -207,8 +207,8 @@ def _sample_fabrication_notes(data, module, seat, angle):
     data['assumptions'] = [next((replacement for prefix, replacement in rules
                                       if note.startswith(prefix)), note)
                                  for note in data.get('assumptions', [])]
-    if data.get('scope_reason', '').startswith('六块24mm白蜡木板；'):
-        data['scope_reason'] = f'六块24mm白蜡木板；座板后缘{angle:g}°平面斜切，显式孔轴与M6可拆装连接。'
+    if data.get('scope_reason', '').startswith('六块24mm桦木海洋板（改制）；'):
+        data['scope_reason'] = f'六块24mm桦木海洋板（改制）；座板后缘{angle:g}°平面斜切，显式孔轴与M6可拆装连接。'
 
 
 def fit_preview(project: Project, module_id: str, key: str, value: float) -> dict:

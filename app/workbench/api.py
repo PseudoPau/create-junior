@@ -14,7 +14,7 @@ from app.workbench.models import (
     EDITABLE_FIELDS, PreparationRequest, Reference, ReferenceInput, now
 )
 from app.workbench.store import WorkbenchStore, RevisionConflict
-from app.workbench.ai import propose, image_type
+from app.workbench.ai import CONFIG_PATH, load_saved_config, propose, image_type, save_ai_config, test_ai_connection
 from app.workbench.reference_links import read_reference_link, ReferenceReadError
 from app.workbench.proposals import ImportProposal, build_proposal
 from app.workbench.engine import build_checks, build_package, check_coverage
@@ -59,6 +59,12 @@ def create_project(body: CreateProject):
 def get_project(project_id: UUID):
     return load(project_id)
 
+
+@router.get("/projects/{project_id}/checks")
+def project_checks(project_id: UUID):
+    project = load(project_id)
+    return {"revision": project.revision, "checks": build_checks(project.model_dump(mode="json")), "coverage": check_coverage()}
+
 @router.put("/projects/{project_id}", response_model=Project)
 def update_project(project_id: UUID, body: UpdateProject):
     checked_patch(body.patch)
@@ -86,6 +92,18 @@ def apply_module_fit(project_id: UUID, module_id: str, body: FitRequest):
     with workbench_store.lock:
         result = guarded_fit(project_id, module_id, body)
         return change(project_id, body.expected_revision, result['patch'])
+
+
+@router.post("/projects/{project_id}/joints/{joint_id}/pair-preview")
+def pair_joint(project_id: UUID, joint_id: str, body: dict = Body(...)):
+    from app.workbench.pairing import pair_joint_preview
+    project = load(project_id)
+    if project.revision != body.get("expected_revision"):
+        raise HTTPException(409, "设计已更新，请重新读取连接。")
+    try:
+        return pair_joint_preview(project, joint_id)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
 
 
 @router.post("/projects/{project_id}/joints/{joint_id}/accept", response_model=Project)
@@ -194,15 +212,58 @@ def reference(project_id: UUID, reference_id: UUID):
     return FileResponse(path, media_type=media_type, filename=ref.name,
                         content_disposition_type="inline")
 
+@router.get("/warehouse")
+def warehouse_list():
+    from app.workbench.warehouse import list_items
+    return {"items": list_items()}
+
+
+@router.post("/warehouse")
+def warehouse_add(payload: dict = Body(...)):
+    from app.workbench.warehouse import add_item
+    try:
+        return {"item": add_item(payload)}
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
+
+
+@router.delete("/warehouse/{item_id}")
+def warehouse_delete(item_id: str):
+    from app.workbench.warehouse import delete_item
+    return {"items": delete_item(item_id)}
+
+
 @router.get("/ai/status")
 def ai_status():
+    load_saved_config()
     mode = os.getenv("CREATE_JUNIOR_AI_PROVIDER", "openai_compatible").strip().lower()
     fields = {name: bool(os.getenv("CREATE_JUNIOR_AI_" + name, "").strip())
               for name in ("BASE_URL", "API_KEY", "MODEL")}
     ready = mode == "prototype" or (mode in {"openai", "openai_compatible"} and all(fields.values()))
-    return {"mode": mode, "ready": ready, "session_available": True,
-            "configured": fields, "model": os.getenv("CREATE_JUNIOR_AI_MODEL", "") if ready else "",
-            "label": "本地原型生成" if mode == "prototype" else "在线 AI" if ready else "会话协作" if mode == "session" else "AI 未连接"}
+    return {"mode": mode, "provider": mode, "ready": ready, "session_available": True,
+            "configured": fields, "model": os.getenv("CREATE_JUNIOR_AI_MODEL", ""),
+            "base_url": os.getenv("CREATE_JUNIOR_AI_BASE_URL", ""),
+            "config_path": str(CONFIG_PATH),
+            "label": "本地原型生成" if mode == "prototype" else "已配置，未测试" if ready else "会话协作" if mode == "session" else "AI 未连接"}
+
+
+@router.put("/ai/config")
+def set_ai_config(payload: dict = Body(...)):
+    try:
+        save_ai_config(
+            str(payload.get("provider") or "openai_compatible"),
+            str(payload.get("base_url") or ""),
+            str(payload.get("model") or ""),
+            str(payload.get("api_key") or ""),
+        )
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
+    return ai_status()
+
+
+@router.post("/ai/test")
+async def test_ai():
+    return await test_ai_connection()
 
 
 @router.post("/projects/{project_id}/analyze")
@@ -226,11 +287,26 @@ async def analyze(project_id: UUID, expected_revision: int | None = Body(default
     return proposal
 
 
+@router.post("/demos/ps2026")
+def ps2026_demo():
+    import json
+    from pathlib import Path
+    from uuid import uuid4
+    from app.workbench.models import now
+    root = Path(__file__).resolve().parents[2] / "examples"
+    data = json.loads((root / "ps2026-reference-design.json").read_text(encoding="utf-8"))
+    data.update(id=str(uuid4()), name="IKEA PS 2026 · 参考重建", revision=1,
+                updated_at=now(), confirmed_revision=1, acknowledged_limits=True)
+    project = Project.model_validate(data)
+    with workbench_store.lock:
+        return workbench_store.save(project)
+
+
 @router.post("/demos/cafe-chair")
 def cafe_demo():
     from app.workbench.demo import cafe_candidate
     with workbench_store.lock:
-        project = workbench_store.save(Project(name="CAFE CHAIR · 样例体验", references=[Reference(id=str(uuid4()), kind="note", name="内置 CAFE CHAIR 样例", text="明确加载现成样例以演示编辑和加工资料流程，非当前参考的自动识别结果。")]))
+        project = workbench_store.save(Project(name="CAFE CHAIR · 样例体验", references=[Reference(id=str(uuid4()), kind="note", name="内置 CAFE CHAIR 样例", text="6 块板、400 mm 座宽、24 mm 桦木海洋板。")]))
         proposal = cafe_candidate(project)
         workbench_store.save_proposal(project.id, proposal)
         return {"project": project, "proposal": proposal}
@@ -339,22 +415,29 @@ def accept(project_id: UUID, body: AcceptProposal):
             raise HTTPException(409, "候选尚不可应用")
         if proposal["base_revision"] != project.revision or body.expected_revision != project.revision:
             raise HTTPException(409, "候选基于旧版本，请重新生成")
+        if body.accept_connections and proposal.get("purpose") != "manufacturing":
+            raise HTTPException(422, "只有按加工需求生成的候选才能确认连接；请先发起加工准备请求")
         checked_patch(proposal["patch"])
         accepted_ids = None
         if project.review_state is None and (body.accept_connections or not project.parts):
             candidate = Project.model_validate({**project.model_dump(mode="json"), **proposal["patch"]})
             checks = build_checks(candidate.model_dump(mode="json"))
-            # Continue adopts concrete default methods, not unknown or invalid joints.
-            # Geometry remains independently checked for every preview and export.
-            accepted_ids = {
-                joint.id for joint in candidate.joints
-                if joint.kind in {"screw", "dowel"} and joint.assembly_note.strip()
-                and joint.feature_ids and joint.hardware
-                and not any(issue['severity'] == 'blocker'
-                            and issue['code'] != 'joint_unconfirmed'
-                            and set(issue.get('part_ids', [])).intersection(joint.part_ids)
-                            for issue in checks)
-            }
+            if body.accept_connections:
+                # Explicit consent covers every declared joint; missing features and
+                # hardware stay as blockers for the user to resolve.
+                accepted_ids = {joint.id for joint in candidate.joints}
+            else:
+                # Continue adopts concrete default methods, not unknown or invalid joints.
+                # Geometry remains independently checked for every preview and export.
+                accepted_ids = {
+                    joint.id for joint in candidate.joints
+                    if joint.kind in {"screw", "dowel"} and joint.assembly_note.strip()
+                    and joint.feature_ids and joint.hardware
+                    and not any(issue['severity'] == 'blocker'
+                                and issue['code'] != 'joint_unconfirmed'
+                                and set(issue.get('part_ids', [])).intersection(joint.part_ids)
+                                for issue in checks)
+                }
         updated = change(project_id, body.expected_revision, proposal["patch"],
                          accepted_joint_ids=accepted_ids)
         from app.workbench.design_runs import DesignRuns
@@ -383,15 +466,26 @@ def preparation_conditions(project: Project) -> tuple[dict, list[dict]]:
     if project.fabrication_mode is None:
         questions.append({"key": "fabrication_mode", "label": "这次由谁加工零件？", "kind": "select",
                           "options": [{"value": "self", "label": "我自己加工"},
+                                      {"value": "kit", "label": "加工店下料/打孔，我装配"},
                                       {"value": "shop", "label": "加工店制件，我来装配"}]})
+    if project.requirements.load_kg is None:
+        questions.append({"key": "load_kg", "label": "这个家具需要承受多大重量？", "kind": "number",
+                          "unit": "kg", "hint": "常规成人坐具按 90–120 kg 取值；不确定就写保守值。"})
+    if not project.requirements.environment:
+        questions.append({"key": "environment", "label": "用在什么环境？", "kind": "select",
+                          "options": [{"value": "indoor", "label": "室内干燥"},
+                                      {"value": "humid", "label": "潮湿环境（如阳台、浴室附近）"},
+                                      {"value": "outdoor", "label": "室外或有遮挡的户外"}]})
     return conditions, questions
 
 
 def proposal_answers_request(proposal: dict, request: dict, revision: int) -> bool:
-    """Only an explicitly linked candidate can answer a current collaboration request."""
+    """Only an explicitly linked or manufacturing-purpose candidate can answer a request."""
+    linked = proposal.get("request_id") == request.get("id")
+    manufacturing = proposal.get("purpose") == "manufacturing"
     return (
         request.get("status") == "pending"
-        and proposal.get("request_id") == request.get("id")
+        and (linked or manufacturing)
         and bool(request.get("id"))
         and proposal.get("status") == "ready"
         and proposal.get("base_revision") == request.get("base_revision") == revision

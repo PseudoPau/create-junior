@@ -80,7 +80,7 @@ async function mutate(patch,advance=false,proposalRevision=null) {
   if(proposalRevision!==null && proposalRevision!==state.project.revision)throw new Error('这版修改基于旧版本，不能用于当前设计；请取消后重新生成。');
   return guarded(async()=>{ state.project=await api(base(),json('PUT',{expected_revision:state.project.revision,patch})); state.proposal=null; state.dirtyForms=false; await refreshData(); if(advance) state.activeTask=nextTask(); render(); return state.project; });
 }
-const tasks=[['reference','复原','这是你要的那把椅子吗'],['fit','适己','它哪里不适合你'],['make','做法','你打算怎么做'],['confirm','加工包','图纸、清单与装配']];
+const tasks=[['reference','复原','这是你要的那把椅子吗'],['fit','适己','它哪里不适合你'],['make','怎么做','你打算怎么做'],['confirm','加工包','图纸、清单与装配']];
 function taskDone(id) {
   const p=state.project;if(!p)return false;
   if(id==='reference')return p.scope==='supported' && p.parts?.length>0;
@@ -439,7 +439,7 @@ function conditionSummary(project=displayProject()) {
     ['设计依据',(project.references?.length||0)+' 项参考 · '+(project.parts?.length||0)+' 个部件'],
     ['目标尺寸',project.scale?.note||'采用当前模型尺寸'],
     ['使用条件',[req.load_kg?req.load_kg+' kg 目标载荷':null,({indoor:'室内',outdoor:'室外'})[req.environment]||req.environment,req.body_height_mm?'身高记录 '+req.body_height_mm+' mm':null].filter(Boolean).join(' · ')||'未记录'],
-    ['加工路径',({self:'自己加工',shop:'加工店制件，自己装配'})[project.fabrication_mode]||'未记录'],
+    ['加工路径',({self:'自己加工',kit:'加工店下料/打孔，自己装配',shop:'加工店制件，自己装配'})[project.fabrication_mode]||'未记录'],
     ['工具 / 限制',[...(req.tools||[]),req.notes].filter(Boolean).join('；')||'未记录额外限制']
   ];
   return node('div',{class:'condition-summary'},node('span',{class:'eyebrow'},'当前设计条件'),rows.map(([label,text])=>node('div',{class:'condition-row'},node('span',{},label),node('strong',{},text))));
@@ -453,7 +453,7 @@ function renderQuestion(body,question) {
   if(!question)return;
   const card=node('div',{class:'key-question'},node('small',{},'补充使用条件'),node('h3',{},question.label));
   const key=question.key.replace(/^requirements\./,'');
-  const options=question.options|| (key==='fabrication_mode'?[['self','自己加工'],['shop','加工店制件，我来装配']]:key==='environment'?[['indoor','室内'],['outdoor','室外']]:null);
+  const options=question.options|| (key==='fabrication_mode'?[['self','自己加工'],['kit','加工店下料/打孔，我装配'],['shop','加工店制件，我来装配']]:key==='environment'?[['indoor','室内'],['outdoor','室外']]:null);
   if(options)card.append(node('div',{class:'choice-stack'},options.map(option=>{const val=Array.isArray(option)?option[0]:option.value,label=Array.isArray(option)?option[1]:option.label;return button(label,()=>answerPreparation(question.key,val),'',!!state.proposal);} )));
   else {
     const form=node('div',{},field(key==='load_kg'?'预计最大使用载荷 kg':'补充条件','answer','',key==='load_kg'?'number':'text'));
@@ -464,7 +464,7 @@ function renderQuestion(body,question) {
 function renderMakeTask(body) {
   const p=state.project,currentRun=runCard();if(currentRun)body.append(currentRun);
   if(state.proposal){body.append(paragraph('修改已显示在模型上，采用后继续。'));return;}
-  const mode=field('由谁加工','fabrication_mode',p.fabrication_mode||'shop','text',[['shop','加工店制件，自己装配'],['self','自己加工']]);
+  const mode=field('由谁加工','fabrication_mode',p.fabrication_mode||'shop','text',[['shop','加工店制件，自己装配'],['kit','加工店下料/打孔，我装配'],['self','自己加工']]);
   mode.querySelector('select').addEventListener('change',event=>mutate({fabrication_mode:event.target.value}).catch(report));body.append(mode);
   const part=p.parts.find(part=>part.id===state.selectedId)||p.parts.find(part=>part.kind==='seat_board')||p.parts[0];
   if(part){

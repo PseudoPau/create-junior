@@ -259,3 +259,26 @@ def test_extreme_but_finite_positions_do_not_overflow_hole_comparison():
     assert "joint_holes_misaligned" in codes
     assert "joint_parts_separated" in codes
     assert build_package(project)["status"] == "draft"
+
+
+def test_cam_lock_kind_is_recognized_but_pocket_geometry_stays_blocked():
+    project = example_project()
+    project["joints"][0]["kind"] = "cam_lock"
+    codes = blockers(project)
+    assert "joint_kind_missing" not in codes
+    assert "cam_lock_geometry_missing" in codes
+    package = build_package(project)
+    assert package["status"] == "draft"
+    assert any(check["code"] == "cam_lock_geometry_missing" for check in package["checks"])
+
+
+def test_cam_lock_pocket_pin_pair_is_approximate_not_missing():
+    project = example_project()
+    project["joints"][0]["kind"] = "cam_lock"
+    project["parts"][0]["features"][0]["diameter_mm"] = 15
+    project["parts"][0]["features"][0]["depth_mm"] = 12
+    project["parts"][1]["features"][0]["diameter_mm"] = 6.5
+    checks = {check["code"]: check for check in build_checks(project)}
+    assert "cam_lock_geometry_approximate" in checks
+    assert "cam_lock_geometry_missing" not in checks
+    assert checks["cam_lock_geometry_approximate"]["severity"] == "warning"

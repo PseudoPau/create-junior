@@ -64,9 +64,32 @@ class Scale(Record):
 class Requirements(Record):
     body_height_mm: float | None = Field(default=None, gt=0, le=2500)
     load_kg: float | None = Field(default=None, gt=0, le=500)
-    environment: str = "indoor"
+    environment: str = ""
     tools: list[str] = Field(default_factory=list)
     notes: str = Field(default="", max_length=4000)
+
+class Costing(Record):
+    currency: str = Field(default="CNY", min_length=3, max_length=8)
+    cutting_per_sheet: float | None = Field(default=None, ge=0, le=1_000_000)
+    finish_per_sheet: float | None = Field(default=None, ge=0, le=1_000_000)
+    assembly_hours: float | None = Field(default=None, ge=0, le=1_000)
+    labor_per_hour: float | None = Field(default=None, ge=0, le=1_000_000)
+    hardware_prices: dict[str, float] = Field(default_factory=dict)
+    notes: str = Field(default="", max_length=2000)
+    source: str = Field(default="", max_length=400)
+    quoted_at: str = Field(default="", max_length=40)
+
+    @field_validator("hardware_prices")
+    @classmethod
+    def valid_hardware_prices(cls, value):
+        if len(value) > 200:
+            raise ValueError("五金价格条目过多")
+        for key, price in value.items():
+            if not key or len(key) > 300:
+                raise ValueError("五金价格键必须为 1 到 300 个字符")
+            if not math.isfinite(price) or price < 0 or price > 1_000_000:
+                raise ValueError("五金单价必须为非负数")
+        return value
 
 class ModuleConstraint(Record):
     key: str = Field(min_length=1, max_length=80, pattern=r"^[a-zA-Z0-9_.-]+$")
@@ -131,6 +154,19 @@ class Material(Record):
     kind: Literal["solid_wood", "panel"]
     grain_axis: Literal["x", "z", "unknown"] = "unknown"
     properties: dict[str, float | str | None] = Field(default_factory=dict)
+    stock_dimensions_mm: tuple[float, float, float] | None = None
+    price_per_stock: float | None = Field(default=None, ge=0, le=10_000_000)
+    currency: str = Field(default="CNY", min_length=3, max_length=8)
+    price_note: str = Field(default="", max_length=200)
+
+    @field_validator("stock_dimensions_mm")
+    @classmethod
+    def valid_stock(cls, value):
+        if value is None:
+            return value
+        if any(not math.isfinite(v) or v <= 0 or v > 20000 for v in value):
+            raise ValueError("板材规格必须为正数且在 20000 mm 以内")
+        return value
 
 class Feature(Record):
     id: str
@@ -233,7 +269,7 @@ class Hardware(Record):
 class Joint(Record):
     name: str = ""
     id: str = Field(min_length=1, max_length=80, pattern=r"^[a-zA-Z0-9_-]+$")
-    kind: Literal["screw", "half_lap", "dowel", "mortise_tenon"]
+    kind: Literal["screw", "half_lap", "dowel", "mortise_tenon", "cam_lock"]
     part_ids: list[str] = Field(min_length=2, max_length=10)
     feature_ids: list[str] = Field(default_factory=list)
     hardware: list[Hardware] = Field(default_factory=list)
@@ -283,14 +319,16 @@ class Project(Record):
     references: list[Reference] = Field(default_factory=list, max_length=20)
     evidence: list[Evidence] = Field(default_factory=list, max_length=200)
     assumptions: list[str] = Field(default_factory=list, max_length=100)
-    fabrication_mode: Literal["self", "shop"] | None = "shop"
+    fabrication_mode: Literal["self", "kit", "shop"] | None = None
     baseline_revision: int | None = Field(default=None, ge=1)
     preservation: Preservation = Field(default_factory=Preservation)
     design_intent: Literal["restoration", "redesign"] = "restoration"
+    reconstruction: bool = False
     profile_snapshot: BodyProfile | None = None
     review_state: ReviewState | None = None
     scale: Scale | None = None
     requirements: Requirements = Field(default_factory=Requirements)
+    costing: Costing = Field(default_factory=Costing)
     modules: list[Module] = Field(default_factory=list, max_length=50)
     materials: dict[str, Material] = Field(default_factory=dict)
     parts: list[Part] = Field(default_factory=list, max_length=100)
@@ -334,6 +372,6 @@ class Restore(Record):
 
 EDITABLE_FIELDS = {
     "name", "scope", "scope_reason", "evidence", "assumptions",
-    "fabrication_mode", "scale", "requirements", "modules", "materials", "parts", "joints",
+    "fabrication_mode", "scale", "requirements", "costing", "modules", "materials", "parts", "joints",
     "preservation", "design_intent"
 }

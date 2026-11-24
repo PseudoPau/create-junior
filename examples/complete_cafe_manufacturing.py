@@ -55,18 +55,18 @@ def build(source):
             fs.append(hole(leg,f'side_{side}_seat_{i}','back',[sign*97,426,z],6.5,55))
             fs.append(hole(leg,f'side_{side}_seat_nut_{i}',face,[sign*109,386,z],10,19,'hardware_access'))
         join('seat_'+side,[seat['id'],leg['id']],fs,[hw('圆头内六角螺栓','M6 × 70 mm，ISO7380-1，头径10.5 / 头高3.3 mm',2),hw('横孔圆柱螺母',BARREL,2),hw('平垫圈',WASHER,2)],f'座板{cn}侧孔从局部最小X/Z边定位：U={103 if sign<0 else 297}mm，V=50、130mm。先钻Ø20深5.2mm沉孔，再钻Ø6.5通孔。侧立板从顶端钻Ø6.5深55mm，外侧顶下40mm钻Ø10深19mm；圆柱螺母外端沉入5mm并对准上孔。装入18mm垫圈与M6×70螺栓，头部收在沉孔内。座面边角打磨后，在平面上校正底脚并交替紧固。')
-    materials={key:{'name':'白蜡木 · 净料24 mm','kind':'solid_wood','grain_axis':axis,'properties':{}} for key,axis in [('ash_x','x'),('ash_z','z')]}
+    materials={key:{'name':'桦木海洋板 · 24 mm（改制）','kind':'panel','grain_axis':axis,'properties':{},'stock_dimensions_mm':[2440,1220,24],'price_per_stock':480,'currency':'CNY','price_note':'示例单价，需按当地供应商替换'} for key,axis in [('ash_x','x'),('ash_z','z')]}
     evidence=[deepcopy(e) for e in source['evidence'] if e['status']=='observed']
     for e in evidence:e['statement']=e['statement'].replace('；这些不是从像素测得的尺寸。','。')
     evidence += [{'statement':text,'status':status,'source_ids':[]} for text,status in [
       ('按已输入的400mm基准将座宽从350改为400mm；座高450、座深215及六板构造保持。','adopted'),
-      ('六板统一白蜡木净厚24mm；座板木纹沿宽度，其余构件木纹沿长边。','adopted'),
+      ('本样例统一采用24mm桦木海洋板改制；原版为白蜡木。座板木纹沿宽度，其余构件木纹沿长边。','adopted'),
       ('采用12枚M6螺栓连接：座板和靠背配8枚横孔圆柱螺母，底脚配4枚锁紧螺母。','adopted'),
       ('横孔螺母规格：Hafele 264.82.014，居中M6螺纹、直径10、长14mm。https://files.hafele.co.uk/catalogfiles/www/14CFC412.pdf','observed'),
       ('圆头螺栓规格：ISO7380-1 M6头径10.5、头高3.3、内六角4mm。https://www.aspenfasteners.com/content/pdf/Metric_ISO_7380_spec.pdf','observed'),
       ('锁紧螺母规格：DIN985 M6 A2-70，厚6mm、扳手10mm。https://www.accu.co.uk/hexagon-nylon-locking-nuts/7948-HNN-M6-A2','observed'),
       ('平垫圈规格：DIN9021 M6内径6.4、外径18、厚1.6mm。https://docs.rs-online.com/3cc2/A700000009608874.pdf','observed')]]
-    patch={'name':'CAFE CHAIR · 白蜡木加工方案','scope':'supported','scope_reason':'六块24mm白蜡木板，直切下料，钻孔安装M6可拆装连接。','scale':{'kind':'target','confirmed':False,'note':'座宽400、座高450、座深215、底脚长300、总高约780 mm。','length_mm':400},'parts':parts,'materials':materials,'joints':joints,'evidence':evidence,'assumptions':['24mm为刨光后的净厚；先按下料表裁切，再按加工面坐标钻孔。','钻孔工具：Ø6.5钻头、Ø10木工钻、Ø20平底钻、直角钻孔导向夹具及深度挡圈。','横孔螺母安装孔深19mm；14mm长螺母外端沉入5mm，使螺纹轴处在24mm板厚中线。','装配次序：底脚与侧立板 → 靠背 → 座板 → 平台校正后交替紧固。']}
+    patch={'name':'CAFE CHAIR · 桦木海洋板改制方案', 'costing':{'currency':'CNY','cutting_per_sheet':120,'finish_per_sheet':180,'assembly_hours':2,'labor_per_hour':80,'hardware_prices':{'圆头内六角螺栓|M6 × 60 mm':1.2,'圆头内六角螺栓|M6 × 70 mm，ISO7380-1，头径10.5 / 头高3.3 mm':1.5,'尼龙锁紧螺母|M6 × 1，厚6 mm':0.4,'平垫圈|M6，内径6.4 / 外径18 / 厚1.6 mm':0.1,'横孔圆柱螺母|M6 × 1，直径10 / 长14 mm，螺纹孔居中':2.0},'notes':'示例费率：开料/钻孔 120 元/张，表面 180 元/张，装配 2 小时 × 80 元/小时；五金为示例单价。','source':'示例费率，需按当地加工店/工价替换','quoted_at':''},'scope':'supported','scope_reason':'六块24mm桦木海洋板（改制），直切下料，钻孔安装M6可拆装连接。','scale':{'kind':'target','confirmed':False,'note':'座宽400、座高450、座深215、底脚长300、总高约780 mm。','length_mm':400},'parts':parts,'materials':materials,'joints':joints,'evidence':evidence,'assumptions':['24mm为刨光后的净厚；先按下料表裁切，再按加工面坐标钻孔。','钻孔工具：Ø6.5钻头、Ø10木工钻、Ø20平底钻、直角钻孔导向夹具及深度挡圈。','横孔螺母安装孔深19mm；14mm长螺母外端沉入5mm，使螺纹轴处在24mm板厚中线。','装配次序：底脚与侧立板 → 靠背 → 座板 → 平台校正后交替紧固。']}
     hardware_proposal, _ = add_hardware_geometry({**source, **patch})
     patch['joints'] = hardware_proposal['patch']['joints']
     candidate=Project.model_validate({**source,**patch}).model_dump(mode='json')
@@ -75,7 +75,7 @@ def build(source):
     assert not physical,json.dumps(physical,ensure_ascii=False)
     package=build_package(candidate)
     report={'source_revision':source['revision'],'part_count':len(parts),'feature_count':sum(len(x['features']) for x in parts),'connection_count':len(joints),'back_edge_distances':audit,'hardware':package['hardware'],'checks':checks,'coverage':package['coverage']}
-    return {'purpose':'manufacturing','summary':'已补齐六处连接、36处加工特征（含沉孔、安装孔）和五金清单。统一24mm白蜡木，座宽400mm；采用M6可拆装螺栓，座面螺栓头收进沉孔。','patch':patch},report
+    return {'purpose':'manufacturing','summary':'已补齐六处连接、36处加工特征（含沉孔、安装孔）和五金清单。统一24mm桦木海洋板（改制），座宽400mm；采用M6可拆装螺栓，座面螺栓头收进沉孔。','patch':patch},report
 
 def add_hardware_geometry(source):
     """Add placements to this sample's existing joints, preserving its design."""

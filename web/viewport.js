@@ -30,6 +30,8 @@ export class WorkshopViewport {
     this.renderer.domElement.addEventListener('pointerdown', () => this.cancelCameraMotion(), { capture:true });
     this.renderer.domElement.addEventListener('wheel', () => this.cancelCameraMotion(), { passive:true, capture:true });
     this.renderer.domElement.addEventListener('pointerdown', event => { this.pointerStart = { x: event.clientX, y: event.clientY, button: event.button, transform: !!this.transform.axis }; });
+    this.renderer.domElement.addEventListener('pointermove', event => this.hoverMeasure(event));
+    this.renderer.domElement.addEventListener('pointerleave', () => this.clearHoverMeasure());
     this.renderer.domElement.addEventListener('pointerup', event => this.pick(event));
     this.renderer.domElement.addEventListener('dblclick',event=>{if(this.mode!=='select')return;const hit=this.partAt(event);if(hit){this.setSelection(hit.object.userData.partId,true);this.focus(hit.object.userData.partId);}});
     this.resizeObserver = new ResizeObserver(() => this.resize()); this.resizeObserver.observe(element); this.resize();
@@ -53,7 +55,13 @@ export class WorkshopViewport {
     for(const item of items){
       const points=(item.points||[item.start,item.end]).filter(Boolean).map(point=>new THREE.Vector3(...point));if(!points.length)continue;
       const start=points[0],end=points[points.length-1];
+      for(const [extensionStart,extensionEnd] of item.extensions||[]){
+        const a=new THREE.Vector3(...extensionStart),b=new THREE.Vector3(...extensionEnd);
+        const direction=b.clone().sub(a);const length=direction.length();
+        if(length>0.1){const unit=direction.clone().normalize();const gap=2,overshoot=2;const from=a.clone().addScaledVector(unit,gap);const to=b.clone().addScaledVector(unit,overshoot);const extension=new THREE.Line(new THREE.BufferGeometry().setFromPoints([from,to]),new THREE.LineBasicMaterial({color:this.palette.accent,transparent:true,opacity:.55,depthTest:false}));extension.renderOrder=39;this.dimensionLines.add(extension);}
+      }
       const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:this.palette.accent,depthTest:false}));line.renderOrder=40;this.dimensionLines.add(line);
+      const direction=end.clone().sub(start);if(direction.length()>1){const unit=direction.clone().normalize();const side=Math.abs(unit.y)>.9?new THREE.Vector3(1,0,0):new THREE.Vector3(0,1,0);const slash=unit.clone().add(side).normalize().multiplyScalar(4);const tickPoints=[start.clone().add(slash),start.clone().sub(slash),end.clone().add(slash),end.clone().sub(slash)];const ticks=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(tickPoints),new THREE.LineBasicMaterial({color:this.palette.accent,depthTest:false}));ticks.renderOrder=40;this.dimensionLines.add(ticks);}
       let label;
       if(item.value!==undefined){label=document.createElement('label');label.className='model-dimension model-dimension-input';const input=document.createElement('input');input.type='text';input.inputMode='decimal';input.value=String(item.value);input.setAttribute('aria-label',item.label||'尺寸');
         input.addEventListener('input',()=>item.onInput?.(input.value));input.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Enter'){event.preventDefault();item.onCommit?.(input.value);}else if(event.key==='Escape'){event.preventDefault();item.onCancel?.();}});
@@ -163,7 +171,7 @@ export class WorkshopViewport {
     if(this.jointGroup)this.resolveJointInspection();
     this.updateHardwareLayout(); this.applyAppearance(); this.attachTransform(); this.clearMeasurement(); if ((wasEmpty || fit) && this.parts.length) this.setView('fit');
   }
-  setSelection(id, notify = false) { this.selectedId = this.parts.some(part=>part.id===id)?id:null;this.highlightIds=new Set(); this.applyAppearance(); this.attachTransform(); if (notify) this.callbacks.onSelect?.(this.selectedId); }
+  setSelection(id, notify = false, event = null) { this.selectedId = this.parts.some(part=>part.id===id)?id:null;this.highlightIds=new Set(); this.applyAppearance(); this.attachTransform(); if (notify) this.callbacks.onSelect?.(this.selectedId, event); }
   attachTransform() { const mesh = this.meshes.find(item => item.userData.partId === this.selectedId && item.visible); if (mesh && ['translate','rotate','scale'].includes(this.mode)) { this.transform.attach(mesh); this.transform.setMode(this.mode); this.transform.setSpace('local'); } else this.transform.detach(); }
   setTool(mode) { if (['measure','translate','rotate','scale','mirror'].includes(mode)) this.clearInspection(); if (mode === 'mirror') { this.mirrorSelected(); return; } this.mode = mode; this.attachTransform(); this.clearMeasurement(); this.renderer.domElement.style.cursor = mode === 'measure' ? 'crosshair' : 'default'; }
   setVisible(id, visible) { visible ? this.hiddenIds.delete(id) : this.hiddenIds.add(id); const mesh = this.meshes.find(item => item.userData.partId === id); if (mesh) mesh.visible = visible; this.updateHardwareLayout(); this.attachTransform(); }
@@ -191,12 +199,30 @@ export class WorkshopViewport {
         }
       }
     }
-    this.setSelection(hit?.object.userData.partId || null,true);
+    this.setSelection(hit?.object.userData.partId || null,true,event);
   }
-  clearMeasurement() { this.measurePoints = []; if (this.measureLine) { this.scene.remove(this.measureLine); this.release(this.measureLine); this.measureLine = null; } this.callbacks.onMeasure?.(null); }
+  clearMeasurement() { this.clearHoverMeasure(); this.measurePoints = []; if (this.measureLine) { this.scene.remove(this.measureLine); this.release(this.measureLine); this.measureLine = null; } this.callbacks.onMeasure?.(null); }
+  hoverMeasure(event) {
+    if (this.mode !== 'measure' || this.measurePoints.length !== 1) return;
+    const hit = this.partAt(event);
+    if (!hit) { this.clearHoverMeasure(); return; }
+    const a = this.measurePoints[0], b = hit.point;
+    if (!this.hoverMeasureLine) {
+      this.hoverMeasureLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), new THREE.LineBasicMaterial({ color: 0xdf643e, transparent: true, opacity: 0.65, depthTest: false }));
+      this.hoverMeasureLine.renderOrder = 98; this.scene.add(this.hoverMeasureLine);
+    } else {
+      this.hoverMeasureLine.geometry.setFromPoints([a, b]); this.hoverMeasureLine.geometry.attributes.position.needsUpdate = true;
+    }
+    this.callbacks.onMeasure?.({ hover: true, distance_mm: a.distanceTo(b), points: [a.toArray(), b.toArray()] });
+  }
+  clearHoverMeasure() {
+    if (this.hoverMeasureLine) { this.scene.remove(this.hoverMeasureLine); this.release(this.hoverMeasureLine); this.hoverMeasureLine = null; }
+    if (this.mode === 'measure' && this.measurePoints.length === 1) this.callbacks.onMeasure?.({ pending: true });
+  }
   addMeasurePoint(point) {
     if (this.measurePoints.length === 2) this.clearMeasurement(); this.measurePoints.push(point.clone());
     if (this.measurePoints.length === 1) { this.callbacks.onMeasure?.({ pending:true }); return; }
+    this.clearHoverMeasure();
     const [a,b] = this.measurePoints; this.measureLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:0xdf643e,depthTest:false})); this.measureLine.renderOrder=99; this.scene.add(this.measureLine); this.callbacks.onMeasure?.({ distance_mm:a.distanceTo(b), points:[a.toArray(),b.toArray()] });
   }
   commitTransform() {

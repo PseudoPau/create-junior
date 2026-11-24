@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Junior · 主线 / 高级修改（骨架稿 v2）</title>
+<style>
+  :root{
+    --rail:#faf8f2; --surface:#fffdf8; --canvas:#e8ebe3; --ink:#1f2521; --muted:#777d74;
+    --line:#e5e1d7; --soft:#f2efe7; --accent:#b85e41; --accent-soft:#f7ece4;
+    --ok:#5f7a62; --danger:#a4422b;
+    --sans:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    --shadow:0 1px 2px #1f252108,0 10px 30px #1f25210a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#dedfd8;font-family:var(--sans);color:var(--ink);font-size:14px;line-height:1.5}
+  button,input,select{font:inherit;color:inherit}
+  button{cursor:pointer}
+  .app{width:1440px;height:900px;margin:0 auto;background:var(--rail);display:flex;flex-direction:column;overflow:hidden}
+
+  .app-header{height:64px;flex:0 0 64px;display:flex;align-items:center;gap:20px;padding:0 22px;border-bottom:1px solid var(--line);background:rgba(250,248,242,.92)}
+  .brand{font-size:30px;line-height:1;font-weight:780;letter-spacing:-2.2px}
+  .brand i{font-style:normal;color:var(--accent)}
+  .proj{display:grid;gap:1px;min-width:0}
+  .proj strong{font-size:13px;font-weight:600;letter-spacing:.1px}
+  .proj span{font-size:10.5px;color:var(--muted)}
+  .actions{margin-left:auto;display:flex;gap:4px}
+  .ghost{border:0;background:transparent;border-radius:9px;padding:7px 10px;min-height:32px;font-size:12px;color:var(--muted)}
+  .ghost:hover{background:var(--soft);color:var(--ink)}
+
+  .workspace{flex:1;min-height:0;display:grid;grid-template-columns:360px minmax(0,1fr)}
+  .rail{display:flex;flex-direction:column;min-height:0;background:var(--rail);border-right:1px solid var(--line);position:relative}
+
+  .guide-main{display:flex;align-items:center;gap:8px;padding:15px 17px 0}
+  .stepper{flex:1;display:flex;gap:3px;background:#efebe2;border-radius:12px;padding:4px}
+  .step{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:34px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:11px;letter-spacing:.1px;white-space:nowrap}
+  .step .num{width:17px;height:17px;border-radius:50%;background:#fff;color:var(--muted);display:grid;place-items:center;font-size:9px;font-weight:650;flex:0 0 17px}
+  .step.active{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 3px #1f252114,0 4px 14px #1f252108}
+  .step.active .num{background:var(--ink);color:#fff}
+  .step.done .num{background:#e5ede4;color:var(--ok)}
+  .edit-entry{width:auto;height:34px;flex:0 0 auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--muted);font-size:10.5px;line-height:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:0 9px}
+  .edit-entry:hover{border-color:var(--accent);color:var(--accent)}
+  .edit-entry svg{display:block;margin:auto}
+
+  .guide-adv{display:none;padding:14px 17px 0}
+  .adv-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 13px 12px;box-shadow:var(--shadow)}
+  .adv-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .back{border:0;background:transparent;padding:0;font-size:11.5px;color:var(--ink);font-weight:600}
+  .back:hover{color:var(--accent)}
+  .esc{font-size:9.5px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 4px}
+  .adv-title{margin-top:7px;font-size:13px;font-weight:650;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .adv-title span{font-size:11px;font-weight:400;color:var(--muted)}
+  .adv-status{margin-top:2px;font-size:10.5px;color:var(--muted)}
+  .app[data-mode="advanced"] .guide-main{display:none}
+  .app[data-mode="advanced"] .guide-adv{display:block}
+
+  .panel{display:none;flex:1;min-height:0;flex-direction:column}
+  .panel.on{display:flex}
+  .body{padding:20px 20px 0;display:flex;flex-direction:column;gap:17px;flex:1;min-height:0;overflow:auto}
+  .title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  h1{margin:0;font-size:26px;line-height:1.22;letter-spacing:-.75px;font-weight:620}
+  h2{margin:0;font-size:20px;line-height:1.3;letter-spacing:-.4px;font-weight:600}
+  .info{width:23px;height:23px;flex:0 0 23px;border:1px solid var(--line);border-radius:50%;background:transparent;color:var(--muted);font-size:11px;line-height:1;padding:0;margin-top:2px}
+  .info:hover{border-color:var(--accent);color:var(--accent)}
+  .sub{margin:0;font-size:12px;line-height:1.6;color:var(--muted)}
+
+  .ref-card{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px;box-shadow:var(--shadow)}
+  .ref-thumb{width:56px;height:56px;flex:0 0 56px;border-radius:10px;background:var(--canvas);overflow:hidden}
+  .ref-thumb img{width:100%;height:100%;object-fit:contain;display:block}
+  .ref-card strong{display:block;font-size:12.5px;font-weight:600}
+  .ref-card small{display:block;font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-size:10.5px;color:#5b6457;background:#edf1e8;border-radius:999px;padding:4px 8px}
+  .chip.accent{background:var(--accent-soft);color:var(--accent)}
+
+  .module-card{display:grid;grid-template-columns:116px minmax(0,1fr);gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+  .module-figure{width:116px;height:116px;border-radius:10px;background:#f2efe6;display:grid;place-items:center;color:#4c554b;overflow:hidden}
+  .module-figure svg{width:104px;height:100px;display:block;opacity:.88}
+  .module-card.big{display:block;padding:8px}
+  .module-card.big .module-figure{width:100%;height:238px;border-radius:10px;background:#f2efe6;display:grid;place-items:center}
+  .module-card.big .module-figure svg{width:246px;height:237px;opacity:.9}
+  .fields-card{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:var(--shadow)}
+  .fields-card label{display:grid;gap:3px;min-width:0}
+  .fields-card .field-label{font-size:9.5px;margin:0}
+  .fields-card .input-wrap input{height:34px;font-size:16px;padding-right:20px}
+  .fields-card .input-wrap em{font-size:9px;right:6px}
+  .module-fields{display:grid;gap:7px;align-content:center}
+  .field-label{font-size:10px;color:var(--muted);display:block;margin-bottom:2px}
+  .input-wrap{position:relative}
+  .input-wrap input{width:100%;height:30px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:4px 23px 4px 8px;font-size:15px;font-weight:550;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+  .input-wrap em{position:absolute;right:7px;top:50%;transform:translateY(-50%);font-style:normal;font-size:9.5px;color:var(--muted)}
+  .module-head{display:flex;align-items:baseline;gap:8px;padding:0 2px}
+  .module-head span{font-size:9px;letter-spacing:1.2px;color:var(--muted)}
+  .module-head b{font-size:11.5px;font-weight:600}
+  .module-head em{font-style:normal;font-size:10px;color:var(--muted);margin-left:auto}
+  .module-title{font-size:9.5px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:1px}
+  .postures{display:flex;gap:3px;background:#efebe2;border-radius:10px;padding:3px}
+  .postures button{flex:1;border:0;background:transparent;border-radius:7px;height:28px;font-size:10.5px;color:var(--muted);padding:0 2px}
+  .postures button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px #1f252110}
+  .micro{font-size:10.5px;color:var(--muted);line-height:1.55;margin:0}
+
+  .module-chip{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--muted);background:#f1eee5;border-radius:999px;padding:5px 9px;align-self:flex-start}
+  .module-chip b{font-weight:600;color:var(--ink)}
+  .module-chip .edit{color:var(--accent);text-decoration:none;font-size:10px;margin-left:2px}
+  .suggest-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .suggest-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:14px}
+  .suggest-row + .suggest-row{border-top:1px solid var(--line)}
+  .suggest-row strong{display:block;font-size:13px;font-weight:600}
+  .suggest-row small{display:block;font-size:10px;color:var(--muted);margin-top:3px;line-height:1.5}
+  .suggest-value{text-align:right;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .suggest-value b{font-weight:600;color:var(--accent)}
+  .suggest-value button{display:block;margin:6px 0 0 auto;border:0;background:none;color:var(--accent);font-size:10.5px;padding:0}
+  .suggest-value .ok{font-size:10.5px;color:var(--muted)}
+
+  .summary{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:6px;box-shadow:var(--shadow)}
+  .summary .row{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--muted)}
+  .summary .row b{font-weight:550;color:var(--ink);font-variant-numeric:tabular-nums}
+  .link-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .link-row{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:transparent;padding:13px 14px;font-size:12.5px;text-align:left}
+  .link-row + .link-row{border-top:1px solid var(--line)}
+  .link-row:hover{background:#fbf8f0}
+  .link-row .chev{color:#b6b3a9;font-size:15px}
+  .history{font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:6px;padding:0 2px}
+  .history b{font-weight:550;color:var(--ink)}
+
+  .tabs{display:flex;gap:3px;background:#efebe2;border-radius:11px;padding:3px}
+  .tabs button{flex:1;height:30px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:10.5px;padding:0 2px}
+  .tabs button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px #1f252110}
+  .tabs button:disabled{opacity:.35;cursor:default}
+
+  .value-pair{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10px;padding:2px 0 15px;border-bottom:1px solid var(--line)}
+  .value-pair small{display:block;font-size:10px;color:var(--muted);margin-bottom:4px}
+  .value-pair b{font-size:30px;line-height:1;font-weight:550;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  .value-pair .proposed b{color:var(--accent)}
+  .value-pair .arrow{font-size:15px;color:var(--muted);padding-bottom:5px}
+  .unit{font-size:10px;color:var(--muted);margin-left:3px}
+  .notice{background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.65;color:#6b4a3c}
+  .notice b{font-weight:600;color:var(--ink)}
+  .record{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin-top:auto}
+  .record b{font-weight:550;color:var(--ink)}
+  .record button{border:0;background:none;color:var(--muted);font-size:10px;padding:0;text-decoration:underline;text-underline-offset:2px}
+  .help{display:grid;gap:8px;margin:0;padding:0;list-style:none;font-size:11.5px;color:var(--muted)}
+  .help li{display:flex;gap:8px;align-items:baseline;line-height:1.55}
+  .help li:before{content:"";width:4px;height:4px;border-radius:50%;background:#c3c8bd;flex:0 0 4px;margin-top:6px}
+
+  .foot{padding:13px 20px 17px;display:flex;flex-direction:column;gap:4px;background:linear-gradient(180deg,transparent,var(--rail) 22%)}
+  .primary{border:0;border-radius:11px;min-height:43px;background:#232a24;color:#fff;font-size:13px;font-weight:600;letter-spacing:.1px;box-shadow:0 4px 12px #1f252118}
+  .primary:hover{background:#121713}
+  .link{border:0;background:transparent;padding:7px 0;font-size:11px;color:var(--muted)}
+  .link:hover{color:var(--ink)}
+  .foot .link{color:var(--muted)}
+  .foot .primary + .link{margin-top:1px}
+
+  .canvas{position:relative;min-width:0;background:var(--canvas);overflow:hidden}
+  .chair{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center center;display:block}
+  .canvas-chip{position:absolute;left:18px;top:15px;display:flex;align-items:center;gap:7px;background:rgba(255,253,248,.78);border:1px solid rgba(255,255,255,.7);border-radius:999px;padding:6px 10px;font-size:10.5px;color:var(--muted);backdrop-filter:blur(10px);box-shadow:0 2px 10px #1f25210a;z-index:3}
+  .canvas-chip .dot{width:5px;height:5px;border-radius:50%;background:#9aa394}
+  .canvas-chip.alter{color:var(--accent)}
+  .canvas-chip.alter .dot{background:var(--accent)}
+  .canvas-tools{position:absolute;right:16px;top:14px;display:flex;align-items:center;gap:2px;background:rgba(255,253,248,.72);border:1px solid rgba(255,255,255,.7);border-radius:999px;padding:4px;backdrop-filter:blur(10px);box-shadow:0 2px 10px #1f25210a;z-index:3}
+  .canvas-tools button{border:0;background:transparent;border-radius:999px;height:27px;padding:0 9px;font-size:10.5px;color:var(--muted)}
+  .canvas-tools button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px #1f252110}
+  .canvas-tools .sep{width:1px;height:14px;background:var(--line);margin:0 3px}
+  .app[data-mode="main"] .tools{display:none}
+  .canvas-hint{position:absolute;right:16px;bottom:12px;font-size:9.5px;color:#8a9187;pointer-events:none}
+  .hud{position:absolute;left:18px;top:55px;display:none;align-items:baseline;gap:8px;background:rgba(255,253,248,.94);border:1px solid rgba(255,255,255,.8);border-radius:11px;padding:9px 12px;backdrop-filter:blur(10px);box-shadow:0 3px 14px #1f252112;pointer-events:none;z-index:4}
+  .hud small{font-size:9.5px;color:var(--muted);letter-spacing:.4px}
+  .hud strong{font-size:22px;line-height:1;font-weight:550;letter-spacing:-.6px;font-variant-numeric:tabular-nums;color:var(--accent)}
+  .hud span{font-size:9.5px;color:var(--muted)}
+  .measure-layer{position:absolute;inset:0;display:none;pointer-events:none;z-index:2}
+  .measure-layer svg{width:100%;height:100%;display:block}
+  .app[data-state="measure"] .measure-layer{display:block}
+  .app[data-state="measure"] .hud{display:flex}
+  .app[data-state="measure"] .tool-measure{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px #1f252110}
+
+  .toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:#232a24;color:#fff;border-radius:9px;padding:8px 13px;font-size:10.5px;opacity:0;transition:opacity .16s;pointer-events:none;z-index:20;white-space:nowrap}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+<main class="app" id="app" data-state="restore" data-mode="main">
+  <header class="app-header">
+    <div class="brand">junior<i>.</i></div>
+    <div class="proj"><strong>CAFE CHAIR · 样例</strong><span>本机 · 样例，不是识别结果</span></div>
+    <div class="actions"><button class="ghost">设置</button><button class="ghost">新设计</button></div>
+  </header>
+
+  <div class="workspace">
+    <aside class="rail">
+      <div class="guide-main">
+        <div class="stepper">
+          <button class="step active" data-goto="restore"><span class="num">1</span>复原</button>
+          <button class="step" data-goto="fit"><span class="num">2</span>适己</button>
+          <button class="step" data-goto="package"><span class="num">3</span>加工包</button>
+        </div>
+        <button class="edit-entry" data-goto="size" aria-label="高级修改" title="高级修改"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m14 6 4 4"/></svg><span>修改</span></button>
+      </div>
+
+      <div class="guide-adv">
+        <div class="adv-card">
+          <div class="adv-head"><button class="back" data-main>← 返回主线</button><span class="esc">Esc</span></div>
+          <div class="adv-title">高级修改 <span id="crumb">尺寸 / 座宽</span></div>
+          <div class="adv-status" id="main-status">主线停留在 01 复原 · 未被修改</div>
+        </div>
+      </div>
+
+      <!-- 复原 -->
+      <section class="panel on" data-panel="restore">
+        <div class="body">
+          <div class="title-row">
+            <h1>这是你要的椅子吗</h1>
+            <button class="info" title="来源、检查、模型组成">i</button>
+          </div>
+          <div class="ref-card">
+            <div class="ref-thumb"><img src="assets/chair-thumb.png" alt=""></div>
+            <div><strong>CAFE CHAIR · 样例</strong><small>6 件 · 座宽 400 mm · 24 mm 白蜡木</small></div>
+          </div>
+          <div class="chips"><span class="chip">保留直板结构</span><span class="chip">保留靠背后倾</span></div>
+        </div>
+        <div class="foot">
+          <button class="primary" data-goto="fit">就是这把，继续</button>
+          <button class="link" data-goto="size">修改这把椅子</button>
+        </div>
+      </section>
+
+      <!-- 适己：模度输入 -->
+      <section class="panel" data-panel="fit">
+        <div class="body">
+          <div class="title-row">
+            <h1>按你的模度调一下</h1>
+            <button class="info" title="怎么测量、数据用在哪">i</button>
+          </div>
+          <p class="sub">模度是示例，不是标准。只比较不合的项。</p>
+          <div class="module-head"><span>MODULE</span><b>坐姿支撑</b><em>个人档案</em></div>
+          <div class="module-card big">
+            <div class="module-figure">
+              <svg class="person" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 260" role="img" aria-label="模度人：站姿身高，坐姿坐高与臀宽">
+                <g fill="none" stroke="currentColor" stroke-width=".8" opacity=".22"><path d="M24 239H248M49 62H128M49 136H128M49 195H128M49 239V62M128 239V28"/><path d="M155 202H241M156 131H241M241 202V131"/></g>
+                <g fill="currentColor"><ellipse cx="91" cy="77" rx="10" ry="13"/><path d="M85 90L84 96Q73 99 70 111L62 143L57 173Q56 179 60 180Q64 181 66 174L72 146L79 123L78 162L81 181L75 211L73 234L67 237Q65 241 76 240L82 239L85 213L93 188L98 211L105 237L117 240Q121 239 117 235L111 233L108 208L101 178L104 151L104 119L114 103Q122 90 123 75L124 49L128 32Q129 27 126 26Q123 25 121 31L117 48L115 74Q113 87 103 95L98 92L98 89Z"/><ellipse cx="181" cy="144" rx="8" ry="10"/><path d="M177 155Q168 159 170 171L171 192Q172 200 181 202L207 204L209 232L223 233Q227 231 221 229L216 228L215 202Q215 195 207 195L188 191L186 169L194 182L211 185Q216 183 211 180L199 177L188 158Z"/></g>
+                <g fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".55"><path d="M171 205H209M172 205V238M207 205V238M167 175V205"/><path d="M43 64V239M39 64H47M39 239H47M238 133V202M234 133H242M234 202H242"/><path d="M77 164V190M104 164V190M77 187H104M77 183V191M104 183V191M105 187H134"/></g>
+                <g fill="currentColor" font-family="Segoe UI,Microsoft YaHei,sans-serif" font-size="13"><text x="20" y="150" text-anchor="middle" transform="rotate(-90 20 150)">身高</text><text x="256" y="171" text-anchor="middle" transform="rotate(-90 256 171)">坐高</text><text x="137" y="191">臀宽</text></g>
+              </svg>
+            </div>
+          </div>
+          <div class="fields-card">
+            <label><span class="field-label">身高</span><span class="input-wrap"><input value="170" inputmode="decimal"><em>cm</em></span></label>
+            <label><span class="field-label">坐高</span><span class="input-wrap"><input value="88" inputmode="decimal"><em>cm</em></span></label>
+            <label><span class="field-label">臀宽</span><span class="input-wrap"><input value="38" inputmode="decimal"><em>cm</em></span></label>
+          </div>
+          <div class="postures" role="group" aria-label="主要坐姿">
+            <button class="on">正坐</button><button>靠坐</button><button>斜靠</button><button>盘腿</button>
+          </div>
+          <p class="micro">不填也行；原椅子原样保留。</p>
+        </div>
+        <div class="foot">
+          <button class="primary" data-goto="fit-suggest">看看建议</button>
+          <button class="link" data-goto="package">跳过，保持原样</button>
+        </div>
+      </section>
+
+      <!-- 适己：建议 -->
+      <section class="panel" data-panel="fit-suggest">
+        <div class="body">
+          <div class="title-row">
+            <h1>1 项建议</h1>
+            <button class="info" title="比较依据">i</button>
+          </div>
+          <div class="module-chip"><span>坐姿支撑</span><b>170 / 88 / 38 · 正坐</b><button class="edit" data-goto="fit">改</button></div>
+          <div class="suggest-card">
+            <div class="suggest-row">
+              <div><strong>座高</strong><small>小腿长对应 400–430</small></div>
+              <div class="suggest-value">450 → <b>420</b> mm<button type="button">采用</button></div>
+            </div>
+          </div>
+          <p class="micro">其余 2 项合适，保持原样。</p>
+        </div>
+        <div class="foot">
+          <button class="primary" data-goto="package">采用 1 项，继续</button>
+          <button class="link" data-goto="package">全部保持</button>
+        </div>
+      </section>
+
+      <!-- 加工包 -->
+      <section class="panel" data-panel="package">
+        <div class="body">
+          <div class="title-row">
+            <h1>可以出包了吗</h1>
+            <button class="info" title="检查范围、使用限制">i</button>
+          </div>
+          <div class="summary">
+            <div class="row"><span>方案</span><b>v17 · 6 件 · 默认做法</b></div>
+            <div class="row"><span>模度 · 坐姿支撑</span><b>170 / 88 / 38 · 正坐</b></div>
+          </div>
+          <div class="link-card">
+            <button class="link-row"><span>采购清单</span><span class="chev">›</span></button>
+            <button class="link-row"><span>加工资料与图纸</span><span class="chev">›</span></button>
+            <button class="link-row"><span>装配步骤</span><span class="chev">›</span></button>
+          </div>
+          <div class="history">历史版本 <b>v16</b> 仍在</div>
+        </div>
+        <div class="foot">
+          <button class="primary">下载加工包</button>
+          <button class="link" data-goto="restore">回到椅子</button>
+        </div>
+      </section>
+
+      <!-- 高级修改：尺寸 -->
+      <section class="panel" data-panel="size">
+        <div class="body">
+          <div class="tabs" role="tablist">
+            <button class="on">尺寸</button><button data-mock="材料">材料</button><button data-mock="连接">连接</button><button data-goto="measure">测量</button>
+          </div>
+          <h2>座宽</h2>
+          <div class="value-pair">
+            <div><small>当前</small><b>400</b><span class="unit">mm</span></div>
+            <div class="arrow">→</div>
+            <div class="proposed"><small>拟采用</small><b>420</b><span class="unit">mm</span></div>
+          </div>
+          <div class="notice"><b>坐姿支撑没有为座宽提出建议。</b><br>420 属于主动改款，原版会保留。</div>
+          <div class="record">修改记录 · <b>1 处未采用</b><button type="button">放弃全部</button></div>
+        </div>
+        <div class="foot">
+          <button class="primary">预览改款</button>
+          <button class="link" data-main>保持 400，回主线</button>
+        </div>
+      </section>
+
+      <!-- 高级修改：测量 -->
+      <section class="panel" data-panel="measure">
+        <div class="body">
+          <div class="tabs" role="tablist">
+            <button data-goto="size">尺寸</button><button data-mock="材料">材料</button><button data-mock="连接">连接</button><button class="on">测量</button>
+          </div>
+          <h2>测量</h2>
+          <ul class="help">
+            <li>移到边线：读这条边的长度</li>
+            <li>点击起点、再点终点：读两点距离</li>
+            <li>Esc：清当前测量，再按一次退出</li>
+          </ul>
+          <p class="micro">只读；不改模型，也不改主线。</p>
+        </div>
+        <div class="foot">
+          <button class="link" data-main>返回主线</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="canvas" aria-label="模型与测量">
+      <div class="canvas-chip" id="canvas-chip"><span class="dot"></span><span id="chip-text">主线 · 复原</span></div>
+      <div class="canvas-tools">
+        <div class="tools">
+          <button class="tool-select on">选择</button><button class="tool-measure">测量</button><span class="sep"></span>
+        </div>
+        <button class="on">等轴</button><button>前</button><button>右</button><button>顶</button><button>适应</button>
+      </div>
+      <img class="chair" src="assets/chair.png" alt="CAFE CHAIR 样例模型">
+      <div class="hud"><small>边线</small><strong>400 mm</strong><span>点击设起点</span></div>
+      <div class="measure-layer" aria-hidden="true">
+        <svg viewBox="0 0 1090 762" preserveAspectRatio="xMidYMid meet">
+          <line x1="397" y1="362" x2="667" y2="384" stroke="#fffdf8" stroke-width="7" stroke-linecap="round" opacity=".92"/>
+          <line x1="397" y1="362" x2="667" y2="384" stroke="#b85e41" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="397" cy="362" r="4.5" fill="#b85e41" stroke="#fffdf8" stroke-width="2"/>
+          <circle cx="667" cy="384" r="4.5" fill="#b85e41" stroke="#fffdf8" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="canvas-hint">拖动旋转 · 滚轮缩放 · 右拖平移</div>
+      <div class="toast" id="toast"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+  const app = document.getElementById('app');
+  const stepFor = {restore:1, fit:2, 'fit-suggest':2, package:3};
+  const stepLabels = {restore:'01 复原', fit:'02 适己', 'fit-suggest':'02 适己', package:'03 加工包'};
+  const mainLabels = {restore:'复原', fit:'适己', 'fit-suggest':'适己', package:'加工包'};
+  const crumbLabels = {size:'尺寸 / 座宽', measure:'测量'};
+  const toast = document.getElementById('toast');
+  let lastMain = 'restore';
+  let toastTimer;
+
+  function setState(name){
+    const advanced = ['size','measure'].includes(name);
+    if (!advanced) lastMain = name;
+    app.dataset.state = name;
+    app.dataset.mode = advanced ? 'advanced' : 'main';
+    document.querySelectorAll('.panel').forEach(panel => panel.classList.toggle('on', panel.dataset.panel === name));
+    const current = stepFor[name] || 0;
+    document.querySelectorAll('.step').forEach((step, index) => {
+      step.classList.toggle('active', index + 1 === current);
+      step.classList.toggle('done', current > 0 && index + 1 < current);
+    });
+    const crumb = document.getElementById('crumb');
+    crumb.textContent = crumbLabels[name] || '尺寸 / 座宽';
+    document.getElementById('main-status').textContent = '主线停留在 ' + (stepLabels[lastMain] || '01 复原') + ' · 未被修改';
+    document.getElementById('chip-text').textContent = advanced ? '修改中 · 主线未变' : '主线 · ' + mainLabels[name];
+    document.getElementById('canvas-chip').classList.toggle('alter', advanced);
+  }
+
+  function flash(message){
+    toast.textContent = message;
+    toast.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('on'), 1500);
+  }
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('[data-main]')) { event.preventDefault(); setState(lastMain); return; }
+    const target = event.target.closest('[data-goto]');
+    if (target) { event.preventDefault(); setState(target.dataset.goto); return; }
+    if (event.target.closest('.info')) flash('骨架稿：来源、检查、组成、测量方法收在这里');
+    if (event.target.closest('[data-mock]')) flash('骨架稿：' + event.target.closest('[data-mock]').dataset.mock + '这一页还没有展开');
+    if (event.target.closest('.link-row')) flash('骨架稿：这里会打开对应资料');
+    if (event.target.closest('.primary') && app.dataset.state === 'size') flash('骨架稿：先预览；采用后才写入主线');
+    if (event.target.closest('.postures button')) {
+      document.querySelectorAll('.postures button').forEach(b => b.classList.toggle('on', b === event.target.closest('button')));
+    }
+    if (event.target.closest('.suggest-value button')) flash('骨架稿：采用后模型变成 420 mm');
+    if (event.target.closest('.tool-measure')) setState('measure');
+    if (event.target.closest('.tool-select')) flash('骨架稿：选择用来聚焦部件');
+    if (event.target.closest('.record button')) flash('骨架稿：未采用的修改会一起放弃');
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && app.dataset.mode === 'advanced') setState(lastMain);
+  });
+
+  setState('restore');
+</script>
+</body>
+</html>

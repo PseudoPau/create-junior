@@ -29,6 +29,10 @@
 - [迭代说明](iterations.md)：各轮范围和验证记录。已完成的记录保留当时的用词。
 - [CHANGELOG](../CHANGELOG.md)：实际变化记录。
 - [2026-11-17 走查记录](walkthrough-2026-11-17.md)：原型基线的实际验证范围和产物。
+- [2026-11-24 开放体验评估](open-experience-review-2026-11-24.md)：样例主路径实际走查、开放交付断点与最小条件。
+- [2026-11-24 主线、修改与测量](ux-restructure-2026-11-24.md)：主线三步、独立高级修改层、随时返回主线、测量 hover 的提案，待确认。
+- [2026-11-24 目标重写：Flatma 级编辑器 + 复原/适己工作流](target-flatma-parity-2026-11-24.md)：逆向 Flatma 的交互/模型范围、工作流映射与 P0–P3 边界。
+- [IKEA PS 2026 参考与缺口](ps2026-reference.md)：公开尺寸、16 页装配说明、五金计数，以及可执行加工包仍缺的板件尺寸。
 - [原交接稿（2026-11-19）](claude-design-handoff-2026-11-19.md)：已被交接稿 v2 取代，保留备查。
 - [Flatma 对齐矩阵](research/flatma-parity.md)：从参考到制造资料的能力差距与分期。
 - [GitHub 高星 AI coding 调研](research/github-ai-vibecoding.md)：同类项目的问题、方案和体验启示。

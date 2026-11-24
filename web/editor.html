@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Junior · 编辑器</title>
+<link rel="stylesheet" href="/static/editor.css?v=20261124-ui11">
+<script type="importmap">{"imports":{"three":"/static/vendor/three/three.module.js","three/addons/":"/static/vendor/three/addons/"}}</script>
+</head>
+<body>
+<div id="editor" class="editor">
+  <header class="top">
+    <a class="brand" href="/" aria-label="Junior 首页">junior<span>.</span></a>
+    <div class="project"><strong id="project-name">打开一个项目</strong><small id="project-meta">本机</small></div>
+    <nav class="modes"><a href="/" id="main-link">AI</a><span aria-current="page">编辑器</span></nav>
+    <div class="actions">
+      <span id="save-status">已保存</span>
+      <button id="cut-button" type="button">开料</button>
+      <button id="docs-button" type="button">文档</button>
+      <button id="check-top" type="button">检查</button>
+      <a class="ghost" href="/">首页</a>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="left" aria-label="对象">
+      <div class="tabs"><button class="on" id="objects-tab">对象</button><button id="warehouse-tab">仓库</button></div>
+      <div class="left-body" id="tree"></div>
+      <div class="left-foot"><span id="left-count">0 件</span><span>v<span id="left-revision">1</span></span></div>
+    </aside>
+
+    <main class="canvas" aria-label="模型">
+      <div id="viewport" class="viewport"></div>
+      <div class="toolbar" id="toolbar">
+        <button type="button" id="undo-button" title="撤销" disabled>↶</button>
+        <button type="button" id="redo-button" title="重做" disabled>↷</button>
+        <span class="sep"></span>
+        <button type="button" data-tool="select" class="on" title="选择">↖</button>
+        <button type="button" data-tool="translate" aria-label="移动" title="移动">✥</button>
+        <button type="button" data-tool="rotate" aria-label="旋转" title="旋转">⟳</button>
+        <button type="button" data-tool="measure" title="测量">↔</button>
+        <button type="button" data-action="check" title="检查">✓</button>
+        <span class="sep"></span>
+        <button type="button" data-tool="advanced" title="高级工具">⚙</button>
+      </div>
+      <div class="views">
+        <button type="button" data-view="iso" class="on">等轴</button>
+        <button type="button" data-view="front">前</button>
+        <button type="button" data-view="right">右</button>
+        <button type="button" data-view="top">顶</button>
+        <button type="button" data-view="fit">适应</button>
+      </div>
+      <div class="hud" id="measure-hud" hidden></div>
+      <div class="status"><span class="dot"></span><span id="status-text">编辑器</span></div>
+      <div class="hint">拖动旋转 · 滚轮缩放 · 右拖平移</div>
+      <div class="empty" id="empty" hidden>
+        <div class="empty-card">
+          <h1>从一把椅子开始</h1>
+          <p>打开样例，进入可编辑的三维模型。编辑器先做选择、尺寸、材料、测量和检查。</p>
+          <button class="primary" id="open-sample" type="button">打开 CAFE CHAIR 样例</button>
+          <a href="/">回主线</a>
+          <p class="error" id="empty-error" hidden></p>
+        </div>
+      </div>
+    </main>
+
+    <aside class="right" aria-label="属性">
+      <div class="right-head"><strong id="right-title">属性</strong><small id="right-sub">未选择</small></div>
+      <div class="right-body" id="right-body"></div>
+      <div class="right-foot" id="right-foot" hidden>
+        <button class="ghost" id="cancel-edit" type="button">取消</button>
+        <button class="primary" id="apply-edit" type="button">采用修改</button>
+      </div>
+    </aside>
+  </div>
+</div>
+<script type="module" src="/static/editor.js?v=20261124-ui11"></script>
+</body>
+</html>

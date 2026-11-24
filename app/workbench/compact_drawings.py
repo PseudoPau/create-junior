@@ -149,6 +149,8 @@ def draw_part_sheets(part,project):
         suffix='' if len(pages)==1 else ' · '+str(page_index+1)+'/'+str(len(pages))
         out=sheet(name+' · 加工图'+suffix,code,project,material,kind='零件加工图')
         out.append(text(17,34,('P'+str(part_number)+'  ' if part_number else '')+'净料 X × Y × Z = '+' × '.join(fmt(v) for v in part['size_mm'])+' mm',3.5,attrs='font-weight="700"'))
+        invalid=[label for label,f in features if not valid_feature(part,f)]
+        if invalid:out.append(text(17,39,'草稿无效：'+'、'.join(invalid)+' 尺寸待补；未按有效孔槽绘制。',3,attrs='font-weight="700"' if False else ''))
         out.append(text(404,34,'视图方向：'+ ' / '.join(FACE_NAMES[b['face']] if b['kind']=='face' else 'C'+str(b['index']+1) for b in blocks),3,'end'))
         remaining=210-sum(b['minimum'] for b in blocks);weights=sum(b['weight'] for b in blocks);y=41;scales=[]
         for block in blocks:

@@ -1,0 +1,48 @@
+[
+  {
+    "label": "cafe-chair",
+    "project": "CAFE CHAIR · 改制样例",
+    "revision": 1,
+    "parts": 6,
+    "joints": 5,
+    "package_status": "ready",
+    "sheets": 1,
+    "material": 480.0,
+    "hardware": 28.8,
+    "processing": 280.0,
+    "finish": 180.0,
+    "total": 968.8,
+    "delivery": "加工店制件，自己装配",
+    "reference": false,
+    "warnings": [
+      "structural_coverage",
+      "fit_coverage"
+    ]
+  },
+  {
+    "label": "ps2026-reference",
+    "project": "IKEA PS 2026 · 参考重建",
+    "revision": 1,
+    "parts": 6,
+    "joints": 6,
+    "package_status": "ready",
+    "sheets": 1,
+    "material": 420.0,
+    "hardware": 54.0,
+    "processing": 310.0,
+    "finish": 200.0,
+    "total": 984.0,
+    "delivery": "加工店制件，自己装配",
+    "reference": true,
+    "warnings": [
+      "cam_lock_geometry_approximate",
+      "cam_lock_geometry_approximate",
+      "cam_lock_geometry_approximate",
+      "cam_lock_geometry_approximate",
+      "cam_lock_geometry_approximate",
+      "cam_lock_geometry_approximate",
+      "structural_coverage",
+      "fit_coverage"
+    ]
+  }
+]

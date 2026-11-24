@@ -256,7 +256,7 @@ def build_checks(project: Any) -> list[dict]:
     scale = project.get("scale") or {}
     if not scale.get("confirmed") or scale.get("kind") not in ("target", "reference") or not str(scale.get("note") or "").strip():
         add("scale_unconfirmed", "请确认原物尺度或本次改制的目标尺度。")
-    if project.get("fabrication_mode") not in ("self", "shop"):
+    if project.get("fabrication_mode") not in ("self", "kit", "shop"):
         add("fabrication_mode_missing", "请确认自行加工或加工店制件后装配。")
     requirements = project.get("requirements") or {}
     # A load entry is an optional use condition, not evidence of validated strength.
@@ -360,13 +360,31 @@ def build_checks(project: Any) -> list[dict]:
             add("joint_unconfirmed", f"{jid}：连接做法尚未接受。", ids)
         if not str(joint.get("assembly_note") or "").strip():
             add("assembly_note_missing", f"{jid}：请补充连接的加工与装配做法。", ids)
-        if kind not in ("screw", "half_lap", "dowel", "mortise_tenon"):
+        if kind not in ("screw", "half_lap", "dowel", "mortise_tenon", "cam_lock"):
             add("joint_kind_missing", f"{jid}：连接类型未指定。", ids)
         if kind == "half_lap":
             add("lap_fit_unverified", f"{jid}：当前尚未验证半搭接槽的实体配合，保留草稿但不可作为可加工版本发布。", ids)
         if kind == "mortise_tenon":
             add("tenon_geometry_missing", f"{jid}：当前孔槽数据尚不能完整表达榫头及配合尺寸，不可作为可加工版本发布。", ids)
         feature_ids = joint.get("feature_ids", [])
+        if kind == "cam_lock":
+            cam_holes = [(pid, feature) for fid in feature_ids
+                         for pid, feature in [feature_map.get(fid, (None, None))]
+                         if pid in ids
+                         and feature.get("kind") == "hole"
+                         and feature.get("role", "connection") == "connection"
+                         and not _feature_error(part_map[pid], feature)]
+            has_pocket = any(float(feature.get("diameter_mm") or 0) >= 12 for _, feature in cam_holes)
+            has_pin = any(0 < float(feature.get("diameter_mm") or 0) <= 8 for _, feature in cam_holes)
+            every_part = {pid for pid, _ in cam_holes} == set(ids)
+            if not (has_pocket and has_pin and every_part):
+                add("cam_lock_geometry_missing",
+                    f"{jid}：偏心件需要每个零件有孔，并至少有一个锁孔（Ø≥12）和一个销孔（Ø≤8）的近似表达；当前不完整。",
+                    ids, severity="warning" if project.get("reconstruction") else "blocker")
+            else:
+                add("cam_lock_geometry_approximate",
+                    f"{jid}：偏心件按大孔/小孔近似表达；锁紧行程、偏心轮位置和沉孔仍需实物核对。",
+                    ids, severity="warning")
         owned = set()
         if not feature_ids:
             add("joint_features_missing", f"{jid}：连接只有名称，没有具体孔槽。", ids)
@@ -382,7 +400,7 @@ def build_checks(project: Any) -> list[dict]:
         if feature_ids and set(ids) - owned:
             add("joint_features_incomplete", f"{jid}：每个连接零件都需要明确的加工特征。", ids)
         required_kind = "slot" if kind == "half_lap" else "hole"
-        if kind in ("screw", "half_lap", "dowel") and feature_ids:
+        if kind in ("screw", "half_lap", "dowel", "cam_lock") and feature_ids:
             appropriate_owners = {feature_map[fid][0] for fid in feature_ids if fid in feature_map and feature_map[fid][1].get("kind") == required_kind and feature_map[fid][1].get("role", "connection") == "connection"}
             if set(ids) - appropriate_owners:
                 add("joint_feature_kind", f"{jid}：每个连接零件都需要对应的孔或槽。", ids)
@@ -429,6 +447,8 @@ def build_checks(project: Any) -> list[dict]:
     add("fit_coverage", "孔轴配对阈值 0.5 mm；加工公差、去料后干涉与装配可达性需实物核对。", severity="warning")
     if project.get("fabrication_mode") == "self":
         add("self_workshop", "先用同批余料试钻和试装连接，再加工正式零件。", severity="info")
+    elif project.get("fabrication_mode") == "kit":
+        add("kit_handoff", "下料套件：给加工店整板规格、下料尺寸、孔位/槽位和纹理方向；自己装配并验收。", severity="info")
     elif project.get("fabrication_mode") == "shop":
         add("shop_handoff", "加工店制件：交付零件编号、木纹方向、加工面和孔槽表；加工店确认公差与工艺后再生产。", severity="info")
     checks.extend(hardware_checks(project))
@@ -438,6 +458,51 @@ def build_checks(project: Any) -> list[dict]:
 def draw_part_svg(part: Any) -> str:
     from app.workbench.drawings import draw_part_sheets
     return draw_part_sheets(_data(part), {})[0]["svg"]
+
+
+DELIVERY_MODES = {
+    "self": {
+        "label": "自己加工并装配",
+        "cutting": "自己下料、打孔",
+        "assembly": "自己装配",
+        "material": "自己采购整板和五金",
+        "tools": ["锯", "钻", "夹", "内六角扳手"],
+        "sections": ["买什么", "怎么切", "怎么装"],
+        "note": "先拿同批余料试钻、试装；工具和安全由自己负责。",
+    },
+    "kit": {
+        "label": "加工店下料/打孔，自己装配",
+        "cutting": "加工店下料、打孔",
+        "assembly": "自己装配",
+        "material": "材料可由自己买或加工店配",
+        "tools": ["内六角扳手", "橡皮锤", "夹"],
+        "sections": ["发给加工店什么", "我装什么", "验收"],
+        "note": "适合没有切割工具的人；把板幅、下料、孔位和纹理交给加工店。",
+    },
+    "shop": {
+        "label": "加工店制件，自己装配",
+        "cutting": "加工店下料、打孔、制件",
+        "assembly": "自己装配",
+        "material": "加工店供料或按约定",
+        "tools": ["内六角扳手", "橡皮锤"],
+        "sections": ["发给加工店什么", "我装什么", "验收"],
+        "note": "加工店按包制件；装配和最终验收仍由自己完成。",
+    },
+}
+
+
+def delivery_summary(project: Any) -> dict:
+    mode = project.get("fabrication_mode") if isinstance(project, dict) else None
+    selected = DELIVERY_MODES.get(mode) or {
+        "label": "未选择交付方式",
+        "cutting": "未确定",
+        "assembly": "未确定",
+        "material": "未确定",
+        "tools": [],
+        "sections": [],
+        "note": "先在主线或编辑器选择谁下料、谁装配。",
+    }
+    return {"mode": mode, **selected}
 
 
 def build_package(project: Any) -> dict:
@@ -453,8 +518,8 @@ def build_package(project: Any) -> dict:
     from app.workbench.assembly_sheet import draw_assembly_sheets
     from app.workbench.review_groups import board_dimensions
     instances = resolve_hardware(project)
-    drawing_sheets = draw_assembly_sheets(project, instances)
-    drawing_sheets.extend(sheet for part in project.get("parts", []) for sheet in draw_part_sheets(part, project))
+    drawing_sheets = [sheet for part in project.get("parts", []) for sheet in draw_part_sheets(part, project)]
+    drawing_sheets.extend(draw_assembly_sheets(project, instances))
     drawing_sheets.extend(draw_joint_sheets(project, instances))
     ready = (
         not any(c["severity"] == "blocker" for c in checks) and not workflow_blockers
@@ -462,6 +527,7 @@ def build_package(project: Any) -> dict:
         and project.get("confirmed_revision") == project.get("revision")
         and project.get("acknowledged_limits") is True
     )
+    from app.workbench.costing import budget as build_budget
     parts, materials = project.get("parts", []), project.get("materials") or {}
     hardware_totals: dict[tuple[str, str], int] = defaultdict(int)
     assembly_steps = []
@@ -478,14 +544,19 @@ def build_package(project: Any) -> dict:
             "hardware": deepcopy(joint.get("hardware", [])),
             "confirmed": bool(joint.get("confirmed")),
         })
+    hardware_list = [{"name": name, "spec": spec, "quantity": quantity}
+                     for (name, spec), quantity in sorted(hardware_totals.items())]
+    project_budget = build_budget(project, hardware_list)
     return {
         "project_id": str(project.get("id", "")), "revision": project.get("revision"),
         "status": "ready" if ready else "draft",
-        "fabrication_mode": project.get("fabrication_mode"), "checks": checks,
+        "fabrication_mode": project.get("fabrication_mode"), "delivery": delivery_summary(project), "checks": checks,
         "review_blockers": workflow_blockers,
         "parts": deepcopy(parts), "joints": deepcopy(project.get("joints", [])),
         "materials": deepcopy(materials),
         "modules": deepcopy(project.get("modules", [])),
+        "material_plan": project_budget["material_plan"],
+        "budget": project_budget,
         "cut_list": [{
             "part_id": p.get("id"), "name": p.get("name"), "quantity": 1,
             "stock_size_mm": deepcopy(p.get("size_mm")),
@@ -495,7 +566,7 @@ def build_package(project: Any) -> dict:
             "grain_axis": (materials.get(p.get("material_id")) or {}).get("grain_axis"),
             "outline_mm": deepcopy(p.get("outline_mm")), "plane_cuts": deepcopy(p.get("plane_cuts",[])), "features": deepcopy(p.get("features", [])),
         } for p in parts],
-        "hardware": [{"name": name, "spec": spec, "quantity": quantity} for (name, spec), quantity in sorted(hardware_totals.items())],
+        "hardware": hardware_list,
         "hardware_instances": instances,
         "assembly_steps": assembly_steps,
         "assumptions": deepcopy(project.get("assumptions", [])),

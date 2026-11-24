@@ -29,6 +29,11 @@ def index() -> FileResponse:
     return FileResponse(web_root / "index.html")
 
 
+@app.get("/editor", response_class=FileResponse)
+def editor() -> FileResponse:
+    return FileResponse(web_root / "editor.html")
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "create-junior", "product": "furniture-workbench"}
@@ -40,3 +45,9 @@ app.include_router(run_router)
 app.include_router(model_import_router)
 app.include_router(create_domain_router(lambda: workbench_api.workbench_store))
 app.include_router(create_review_router(lambda: workbench_api.workbench_store))
+
+
+@app.on_event("startup")
+def load_saved_ai_settings() -> None:
+    from app.workbench.ai import load_saved_config
+    load_saved_config()

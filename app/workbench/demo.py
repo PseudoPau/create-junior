@@ -27,7 +27,7 @@ def cafe_candidate(project):
         "affected_part_ids": ["seat", "back", "side_left", "side_right", "foot_left", "foot_right"],
         "notes": "模块目标来自样例流程输入；人体工学范围需要按实际使用者和专业依据复核。"
     }]
-    proposal = build_proposal(project, "加载现成 CAFE CHAIR 样例：6 个板件、400 mm 座宽、24 mm 白蜡木。用于体验编辑、连接检查和图纸；不代表 AI 已识别你的参考。", base, purpose="manufacturing")
+    proposal = build_proposal(project, "CAFE CHAIR 改制样例：6 块板、400 mm 座宽、24 mm 桦木海洋板。", base, purpose="manufacturing")
     proposal["source"] = "demo"
     proposal["provider"] = "demo"
     return proposal

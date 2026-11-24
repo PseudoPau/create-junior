@@ -1,10 +1,10 @@
 {
   "purpose": "manufacturing",
-  "summary": "已补齐六处连接、36处加工特征（含沉孔、安装孔）和五金清单。统一24mm白蜡木，座宽400mm；采用M6可拆装螺栓，座面螺栓头收进沉孔。",
+  "summary": "已补齐六处连接、36处加工特征（含沉孔、安装孔）和五金清单。统一24 mm桦木海洋板（改制），座宽400 mm；采用M6可拆装螺栓。",
   "patch": {
-    "name": "CAFE CHAIR · 白蜡木加工方案",
+    "name": "CAFE CHAIR · 桦木海洋板改制方案",
     "scope": "supported",
-    "scope_reason": "六块24mm白蜡木板，直切下料，钻孔安装M6可拆装连接。",
+    "scope_reason": "六块24 mm桦木海洋板（改制），直切下料，钻孔安装M6可拆装连接。",
     "scale": {
       "kind": "target",
       "confirmed": false,
@@ -519,16 +519,32 @@
     ],
     "materials": {
       "ash_x": {
-        "name": "白蜡木 · 净料24 mm",
-        "kind": "solid_wood",
+        "name": "桦木海洋板 · 24 mm（改制）",
+        "kind": "panel",
         "grain_axis": "x",
-        "properties": {}
+        "properties": {},
+        "stock_dimensions_mm": [
+          2440,
+          1220,
+          24
+        ],
+        "price_per_stock": 480,
+        "currency": "CNY",
+        "price_note": "示例单价，需按当地供应商替换"
       },
       "ash_z": {
-        "name": "白蜡木 · 净料24 mm",
-        "kind": "solid_wood",
+        "name": "桦木海洋板 · 24 mm（改制）",
+        "kind": "panel",
         "grain_axis": "z",
-        "properties": {}
+        "properties": {},
+        "stock_dimensions_mm": [
+          2440,
+          1220,
+          24
+        ],
+        "price_per_stock": 480,
+        "currency": "CNY",
+        "price_note": "示例单价，需按当地供应商替换"
       }
     },
     "joints": [
@@ -1288,7 +1304,7 @@
         "source_ids": []
       },
       {
-        "statement": "六板统一白蜡木净厚24mm；座板木纹沿宽度，其余构件木纹沿长边。",
+        "statement": "本样例统一采用24 mm桦木海洋板改制；原版为白蜡木。座板木纹沿宽度，其余构件木纹沿长边。",
         "status": "adopted",
         "source_ids": []
       },
@@ -1323,6 +1339,23 @@
       "钻孔工具：Ø6.5钻头、Ø10木工钻、Ø20平底钻、直角钻孔导向夹具及深度挡圈。",
       "横孔螺母安装孔深19mm；14mm长螺母外端沉入5mm，使螺纹轴处在24mm板厚中线。",
       "装配次序：底脚与侧立板 → 靠背 → 座板 → 平台校正后交替紧固。"
-    ]
+    ],
+    "costing": {
+      "currency": "CNY",
+      "cutting_per_sheet": 120,
+      "finish_per_sheet": 180,
+      "assembly_hours": 2,
+      "labor_per_hour": 80,
+      "hardware_prices": {
+        "圆头内六角螺栓|M6 × 60 mm": 1.2,
+        "圆头内六角螺栓|M6 × 70 mm，ISO7380-1，头径10.5 / 头高3.3 mm": 1.5,
+        "尼龙锁紧螺母|M6 × 1，厚6 mm": 0.4,
+        "平垫圈|M6，内径6.4 / 外径18 / 厚1.6 mm": 0.1,
+        "横孔圆柱螺母|M6 × 1，直径10 / 长14 mm，螺纹孔居中": 2.0
+      },
+      "notes": "示例费率：开料/钻孔 120 元/张，表面 180 元/张，装配 2 小时 × 80 元/小时；五金为示例单价。",
+      "source": "示例费率，需按当地加工店/工价替换",
+      "quoted_at": ""
+    }
   }
 }

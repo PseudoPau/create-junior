@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Junior · 编辑器（Flatma 对齐骨架）</title>
+<style>
+  :root{
+    --paper:#fbfaf5; --surface:#fffdf8; --canvas:#e8ebe3; --ink:#1f2521; --muted:#777d74;
+    --line:#e5e1d7; --soft:#efebe2; --accent:#b85e41; --accent-soft:#f7ece4; --ok:#5f7a62;
+    --sans:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#dedfd8;font-family:var(--sans);color:var(--ink);font-size:13px;line-height:1.45}
+  button,input,select{font:inherit;color:inherit}
+  button{cursor:pointer}
+  .app{width:1440px;height:900px;margin:0 auto;background:var(--paper);display:flex;flex-direction:column;overflow:hidden}
+
+  .top{height:56px;flex:0 0 56px;display:flex;align-items:center;gap:18px;padding:0 16px;border-bottom:1px solid var(--line);background:rgba(251,250,245,.96)}
+  .menu{width:30px;height:30px;border:0;background:transparent;border-radius:7px;color:var(--muted);font-size:15px}
+  .menu:hover{background:var(--soft)}
+  .brand{font-size:27px;font-weight:780;letter-spacing:-2px;line-height:1}
+  .brand i{font-style:normal;color:var(--accent)}
+  .project{display:grid;gap:1px;margin-left:2px}
+  .project strong{font-size:12.5px;font-weight:600}
+  .project span{font-size:10px;color:var(--muted)}
+  .save{border:0;background:transparent;color:var(--muted);font-size:10.5px;padding:4px 6px}
+  .save:hover{color:var(--ink)}
+  .modes{position:absolute;left:50%;transform:translateX(-50%);display:flex;gap:2px;background:var(--soft);border-radius:10px;padding:3px}
+  .modes button{height:28px;border:0;border-radius:8px;background:transparent;padding:0 11px;font-size:11px;color:var(--muted)}
+  .modes button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 3px #1f252110}
+  .right{display:flex;align-items:center;gap:2px;margin-left:auto}
+  .right button{border:0;background:transparent;border-radius:7px;padding:6px 8px;font-size:11px;color:var(--muted)}
+  .right button:hover{background:var(--soft);color:var(--ink)}
+  .right .primary{background:var(--ink);color:#fff;border-radius:8px;padding:7px 11px}
+  .right .primary:hover{background:#121713;color:#fff}
+
+  .workspace{flex:1;min-height:0;display:grid;grid-template-columns:276px minmax(0,1fr) 300px}
+  .left,.right-panel{background:var(--surface);min-height:0;display:flex;flex-direction:column}
+  .left{border-right:1px solid var(--line)}
+  .right-panel{border-left:1px solid var(--line)}
+  .tabs{display:flex;gap:2px;padding:10px 10px 0;border-bottom:1px solid var(--line)}
+  .tabs button{flex:1;border:0;background:transparent;border-bottom:2px solid transparent;padding:8px 4px;font-size:11px;color:var(--muted)}
+  .tabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+  .panel-body{padding:12px;overflow:auto;flex:1;min-height:0}
+  .group-title{font-size:9.5px;letter-spacing:1.1px;color:var(--muted);text-transform:uppercase;padding:8px 8px 5px}
+  .tree{display:grid;gap:1px}
+  .tree-row{display:flex;align-items:center;gap:7px;width:100%;border:0;background:transparent;border-radius:7px;padding:7px 8px;text-align:left;font-size:11.5px;color:var(--ink)}
+  .tree-row:hover{background:var(--soft)}
+  .tree-row.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .tree-row .indent{width:13px;flex:0 0 13px;color:var(--muted);font-size:10px;text-align:center}
+  .tree-row small{margin-left:auto;font-size:9.5px;color:var(--muted);font-weight:400}
+  .left-foot{border-top:1px solid var(--line);padding:10px 12px;display:flex;gap:6px}
+  .left-foot button{flex:1;border:1px solid var(--line);background:var(--paper);border-radius:7px;height:29px;font-size:10.5px;color:var(--muted)}
+  .left-foot button:hover{border-color:var(--accent);color:var(--accent)}
+
+  .canvas{position:relative;min-width:0;background:var(--canvas);overflow:hidden}
+  .chair{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center center}
+  .scene-tools{position:absolute;left:14px;top:14px;display:flex;flex-direction:column;gap:3px;padding:3px;background:rgba(255,253,248,.82);border:1px solid rgba(255,255,255,.75);border-radius:10px;backdrop-filter:blur(10px);box-shadow:0 2px 12px #1f25210d;z-index:4}
+  .scene-tools button{width:30px;height:30px;border:0;border-radius:7px;background:transparent;color:var(--muted);display:grid;place-items:center}
+  .scene-tools button:hover,.scene-tools button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px #1f252112}
+  .scene-tools .sep{height:1px;background:var(--line);margin:2px 4px}
+  .scene-tools svg{width:14px;height:14px;display:block}
+  .view-tools{position:absolute;right:14px;top:14px;display:flex;gap:2px;padding:4px;background:rgba(255,253,248,.72);border:1px solid rgba(255,255,255,.7);border-radius:999px;backdrop-filter:blur(10px);box-shadow:0 2px 10px #1f25210a;z-index:4}
+  .view-tools button{border:0;background:transparent;border-radius:999px;height:26px;padding:0 8px;font-size:10px;color:var(--muted)}
+  .view-tools button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px #1f252110}
+  .status{position:absolute;left:14px;bottom:12px;display:flex;align-items:center;gap:7px;background:rgba(255,253,248,.82);border:1px solid rgba(255,255,255,.75);border-radius:999px;padding:5px 9px;font-size:9.5px;color:var(--muted);backdrop-filter:blur(8px);z-index:4}
+  .status .dot{width:5px;height:5px;border-radius:50%;background:#9aa394}
+  .hint{position:absolute;right:14px;bottom:12px;font-size:9.5px;color:#8a9187;z-index:3}
+  .tool-note{position:absolute;left:56px;top:14px;display:flex;gap:2px;padding:3px;background:rgba(255,253,248,.82);border:1px solid rgba(255,255,255,.75);border-radius:8px;backdrop-filter:blur(10px);box-shadow:0 2px 12px #1f25210d;z-index:3}
+  .tool-note button{height:28px;border:0;background:transparent;border-radius:6px;padding:0 8px;font-size:10px;color:var(--muted)}
+  .tool-note button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px #1f252110}
+
+  .right-panel .head{display:flex;align-items:center;justify-content:space-between;padding:11px 12px 9px;border-bottom:1px solid var(--line)}
+  .right-panel .head strong{font-size:12px;font-weight:600}
+  .right-panel .head small{font-size:9.5px;color:var(--muted)}
+  .form{display:grid;gap:14px;padding:13px 12px}
+  .field{display:grid;gap:5px;font-size:10px;color:var(--muted)}
+  .field .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .field input,.field select{width:100%;height:31px;border:1px solid var(--line);border-radius:7px;background:#fff;padding:4px 8px;font-size:12px;font-variant-numeric:tabular-nums}
+  .field .unit{position:relative}
+  .field .unit em{position:absolute;right:7px;top:50%;transform:translateY(-50%);font-style:normal;font-size:9px;color:var(--muted)}
+  .field .unit input{padding-right:24px}
+  .section{display:grid;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
+  .section h3{font-size:10px;font-weight:600;letter-spacing:.2px;margin:0;color:var(--ink)}
+  .material-row{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:7px;background:#fff}
+  .swatch{width:22px;height:22px;border-radius:5px;background:#d8c49d;border:1px solid #c9b58e;flex:0 0 22px}
+  .material-row div{min-width:0}
+  .material-row b{display:block;font-size:11px;font-weight:600}
+  .material-row small{display:block;font-size:9px;color:var(--muted);margin-top:1px}
+  .check-card{border:1px solid var(--line);border-radius:9px;padding:9px;background:var(--paper);display:grid;gap:5px}
+  .check-card .line{display:flex;align-items:center;justify-content:space-between;font-size:10.5px}
+  .check-card .line b{font-weight:600}
+  .check-card small{font-size:9px;color:var(--muted);line-height:1.5}
+  .check-card button{border:1px solid var(--line);background:#fff;border-radius:7px;height:28px;font-size:10px;color:var(--ink)}
+  .check-card button:hover{border-color:var(--accent);color:var(--accent)}
+  .right-foot{border-top:1px solid var(--line);padding:10px 12px;display:flex;gap:6px}
+  .right-foot .primary{flex:1;border:0;border-radius:8px;height:34px;background:var(--ink);color:#fff;font-size:11px;font-weight:600}
+  .right-foot .ghost{border:1px solid var(--line);background:transparent;border-radius:8px;height:34px;padding:0 10px;font-size:10.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <button class="menu" aria-label="菜单">☰</button>
+    <div class="brand">junior<i>.</i></div>
+    <div class="project"><strong>CAFE CHAIR · 样例</strong><span>v17 · 本机 · 样例</span></div>
+    <button class="save">已保存</button>
+    <div class="modes" role="tablist">
+      <button>主线</button><button class="on">编辑器</button>
+    </div>
+    <div class="right">
+      <button>文档</button><button>设置</button><button class="primary">完成</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="left">
+      <div class="tabs"><button class="on">对象</button><button>材料</button></div>
+      <div class="panel-body">
+        <div class="group-title">整椅 · 6 件</div>
+        <div class="tree">
+          <button class="tree-row"><span class="indent">▾</span>CAFE CHAIR<small>v17</small></button>
+          <button class="tree-row on"><span class="indent"></span>座板<small>215×400×24</small></button>
+          <button class="tree-row"><span class="indent"></span>左侧立板<small>426×170×24</small></button>
+          <button class="tree-row"><span class="indent"></span>右侧立板<small>426×170×24</small></button>
+          <button class="tree-row"><span class="indent"></span>倾斜长靠背<small>788×170×24</small></button>
+          <button class="tree-row"><span class="indent"></span>左底脚<small>300×80×24</small></button>
+          <button class="tree-row"><span class="indent"></span>右底脚<small>300×80×24</small></button>
+        </div>
+        <div class="group-title">连接 · 5 处</div>
+        <div class="tree">
+          <button class="tree-row"><span class="indent"></span>底脚—侧立板<small>×2</small></button>
+          <button class="tree-row"><span class="indent"></span>座板—侧立板<small>×2</small></button>
+          <button class="tree-row"><span class="indent"></span>靠背—座板后缘<small>×1</small></button>
+        </div>
+        <div class="group-title">模度</div>
+        <div class="tree">
+          <button class="tree-row"><span class="indent"></span>坐姿支撑<small>170/88/38</small></button>
+        </div>
+      </div>
+      <div class="left-foot"><button>显示/隐藏</button><button>锁定</button></div>
+    </aside>
+
+    <section class="canvas">
+      <div class="scene-tools" aria-label="场景工具">
+        <button title="撤销"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 7 4 12l5 5"/><path d="M4 12h9a5 5 0 0 1 0 10h-2"/></svg></button>
+        <button title="重做"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m15 7 5 5-5 5"/><path d="M20 12h-9a5 5 0 0 0 0 10h2"/></svg></button>
+        <div class="sep"></div>
+        <button title="多选"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg></button>
+        <button title="测量"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m4 17 13-13 3 3L7 20z"/><path d="m9 12 2 2m1-5 2 2"/></svg></button>
+        <button class="on" title="高级工具"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.1 2.1-2.1-2.1z"/></svg></button>
+        <div class="sep"></div>
+        <button title="检查"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3 5 6v5c0 4.5 3 7.8 7 10 4-2.2 7-5.5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg></button>
+      </div>
+      <div class="tool-note">
+        <button class="on">尺寸</button><button>材料</button><button>连接</button><button>结构</button>
+      </div>
+      <div class="view-tools">
+        <button class="on">等轴</button><button>前</button><button>右</button><button>顶</button><button>适应</button>
+      </div>
+      <img class="chair" src="assets/chair.png" alt="CAFE CHAIR 编辑器">
+      <div class="status"><span class="dot"></span><span>编辑器 · 座板</span></div>
+      <div class="hint">拖动旋转 · 滚轮缩放 · 右拖平移</div>
+    </section>
+
+    <aside class="right-panel">
+      <div class="head"><strong>属性</strong><small>座板</small></div>
+      <div class="form">
+        <div class="section">
+          <h3>尺寸</h3>
+          <div class="field"><span>长 / 宽 / 厚</span>
+            <div class="row3">
+              <span class="unit"><input value="215"><em>mm</em></span>
+              <span class="unit"><input value="400"><em>mm</em></span>
+              <span class="unit"><input value="24"><em>mm</em></span>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <h3>材料</h3>
+          <div class="material-row"><span class="swatch"></span><div><b>桦木海洋板</b><small>24 mm · 1220×2440 · 长边纹理</small></div></div>
+        </div>
+        <div class="section">
+          <h3>连接</h3>
+          <div class="field"><select><option>座板—侧立板 · M6 螺栓 ×2</option><option>座板—侧立板 · 木销 ×2</option></select></div>
+        </div>
+        <div class="section">
+          <h3>检查</h3>
+          <div class="check-card">
+            <div class="line"><span>整椅检查</span><b>v17 · 未检查</b></div>
+            <small>碰撞、连接性、承重草算。改任何东西都要重跑。</small>
+            <button>运行检查</button>
+          </div>
+        </div>
+      </div>
+      <div class="right-foot"><button class="ghost">取消</button><button class="primary">采用修改</button></div>
+    </aside>
+  </div>
+</main>
+</body>
+</html>

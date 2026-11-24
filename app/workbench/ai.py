@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+from pathlib import Path
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -17,6 +18,52 @@ import httpx
 from app.workbench.models import Project
 from app.workbench.proposals import build_proposal, proposal_schema
 from app.workbench.store import WorkbenchStore
+
+
+CONFIG_PATH = Path(__file__).resolve().parents[2] / ".data" / "ai-config.json"
+
+
+def load_saved_config() -> dict[str, str]:
+    """Saved settings are local secrets; never return the key to the browser."""
+    try:
+        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    mapping = {"provider": "CREATE_JUNIOR_AI_PROVIDER", "base_url": "CREATE_JUNIOR_AI_BASE_URL",
+               "model": "CREATE_JUNIOR_AI_MODEL", "api_key": "CREATE_JUNIOR_AI_API_KEY"}
+    for key, env_name in mapping.items():
+        value = str(data.get(key) or "").strip()
+        if value:
+            os.environ[env_name] = value
+    return {key: str(data.get(key) or "") for key in mapping}
+
+
+def save_ai_config(provider: str, base_url: str, model: str, api_key: str = "") -> dict[str, str]:
+    provider = provider.strip().lower()
+    if provider not in {"openai", "openai_compatible", "session", "prototype", "none"}:
+        raise ValueError("提供方只能是 openai、openai_compatible、session 或 prototype。")
+    base_url = base_url.strip()
+    model = model.strip()
+    if provider in {"openai", "openai_compatible"}:
+        if not base_url.startswith(("http://", "https://")):
+            raise ValueError("服务地址必须是 http(s) URL。")
+        if not model:
+            raise ValueError("在线模型名称不能为空。")
+    if not api_key.strip():
+        api_key = os.getenv("CREATE_JUNIOR_AI_API_KEY", "").strip()
+    data = {"provider": provider, "base_url": base_url, "model": model, "api_key": api_key.strip()}
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = CONFIG_PATH.with_suffix(".tmp")
+    temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, CONFIG_PATH)
+    os.environ["CREATE_JUNIOR_AI_PROVIDER"] = provider
+    os.environ["CREATE_JUNIOR_AI_BASE_URL"] = base_url
+    os.environ["CREATE_JUNIOR_AI_MODEL"] = model
+    os.environ["CREATE_JUNIOR_AI_API_KEY"] = data["api_key"]
+    return data
 
 
 SYSTEM = """你是 Junior 的自主家具设计师。根据参考资料、用户目标和当前设计，提出一个可编辑、可制造的家具候选。
@@ -149,9 +196,32 @@ def configured_designer() -> DesignerProvider:
     key = os.getenv("CREATE_JUNIOR_AI_API_KEY", "").strip()
     model = os.getenv("CREATE_JUNIOR_AI_MODEL", "").strip()
     if not all((base, key, model)):
-        return UnavailableDesigner("视觉 AI 尚未连接。请配置 CREATE_JUNIOR_AI_PROVIDER、BASE_URL、API_KEY 和 MODEL；当前设计不会改变。")
+        return UnavailableDesigner("视觉 AI 尚未连接。请在设置里填服务地址、模型名称和 API 密钥，然后点“测试连接”。")
     provider_type = OpenAIDesigner if kind == 'openai' else OpenAICompatibleDesigner
     return provider_type(base, key, model, name=kind)
+
+
+async def test_ai_connection() -> dict[str, Any]:
+    """User-triggered reachability check; never returns the key."""
+    load_saved_config()
+    provider = configured_designer()
+    if provider.name == "unavailable":
+        return {"ok": False, "message": provider.reason}
+    if provider.name == "prototype":
+        return {"ok": True, "message": "本地原型可用，不调用外部模型。"}
+    if provider.name == "session":
+        return {"ok": True, "message": "会话协作模式：候选由当前聊天返回。"}
+    if isinstance(provider, OpenAICompatibleDesigner):
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                response = await client.get(provider.base_url + "/models",
+                                            headers={"Authorization": "Bearer " + provider.api_key})
+            if response.status_code == 200:
+                return {"ok": True, "message": "连接成功 · " + provider.model}
+            return {"ok": False, "message": f"服务返回 HTTP {response.status_code}，请检查地址、密钥和模型。"}
+        except Exception as error:
+            return {"ok": False, "message": "连接失败：" + str(error)[:200]}
+    return {"ok": False, "message": "当前提供方不支持连接测试。"}
 
 
 async def propose(store: WorkbenchStore, project: Project, text: str | None = None) -> dict[str, Any]:

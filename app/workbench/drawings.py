@@ -125,6 +125,19 @@ def feature_label(part,f):
 
 def short_features(part):return [(f'H{i+1}' if f.get('kind')=='hole' else f'S{i+1}',f) for i,f in enumerate(part.get('features',[]))]
 
+def _overview_notes(out,part):
+    """Draft markers and coordinate reminders on the part overview sheet."""
+    features=short_features(part)
+    invalid=[label for label,f in features if not valid_feature(part,f)]
+    slots=[label for label,f in features if f.get('kind')!='hole']
+    access=[label for label,f in features if f.get('role')=='hardware_access']
+    out.append(text(17,232,'底面 X/Z：与俯视同面、法向相反，孔槽尺寸见底面加工图。',2.8))
+    notes=[]
+    if invalid:notes.append('草稿无效：'+'、'.join(invalid)+' 尺寸待补')
+    if slots:notes.append('槽 U/V 是最小角')
+    if access:notes.append('五金安装孔：'+'、'.join(access))
+    if notes:out.append(text(17,237,'；'.join(notes),2.8))
+
 def _overview_view(out,part,axis_u,axis_v,normal,cx,cy,scale,title):
     size=part['size_mm'];u_index,u_sign=axis_u;v_index,v_sign=axis_v
     width,height=size[u_index]*scale,size[v_index]*scale;x,y=cx-width/2,cy-height/2
@@ -138,10 +151,15 @@ def _overview_view(out,part,axis_u,axis_v,normal,cx,cy,scale,title):
         for px,pz in part['outline_mm']:
             local=[px-size[0]/2,0,pz-size[2]/2];points.append((cx+local[u_index]*u_sign*scale,cy-local[v_index]*v_sign*scale))
         out.append(polygon(points))
+        for index,(px,pz) in enumerate(part['outline_mm'],1):
+            if px in (0,size[0]) and pz in (0,size[2]):continue
+            out.append(text(points[index-1][0],points[index-1][1]-2,f'P{index}: X={fmt(px)}，Z={fmt(pz)} mm',2.4,'middle','class="dimtext"'))
     else:out.append(rect(x,y,width,height))
     for _,f in short_features(part):
         if not valid_feature(part,f):continue
         point,axis,length=feature_segment(part,f,False);px=cx+point[u_index]*u_sign*scale;py=cy-point[v_index]*v_sign*scale
+        if AXES[f['face']][:2] in ((u_index,v_index),(v_index,u_index)):
+            out.append(text(px+2.5,py-2.5,f'U={fmt(f["u_mm"])} V={fmt(f["v_mm"])}',2.4,'start','class="dimtext"'))
         if f['kind']=='hole':
             radius=f['diameter_mm']/2*scale
             if f.get('direction_local') or f.get('entry_mm'):
@@ -175,15 +193,16 @@ def draw_part_sheets(part,project):
     material=project.get('materials',{}).get(part.get('material_id'),{}).get('name','')
     code='P-'+part.get('id','part');title=part.get('name') or part.get('id','零件')
     if not _valid_outline(part):
-        out=sheet(title,code,project,material);out.append(text(20,50,'轮廓数据无效，未绘制加工几何。',5));return [{'id':code,'part_id':part.get('id'),'title':title,'sheet_type':'invalid','svg':finish(out)}]
+        out=sheet(title,code,project,material);out.append(text(20,46,'草稿无效',6));out.append(text(20,54,'斜切轮廓至少需要三个顶点，且不得自相交。未绘制加工几何。',4));return [{'id':code,'part_id':part.get('id'),'title':title,'sheet_type':'invalid','svg':finish(out)}]
     out=sheet(title+' · 零件总图',code,project,material)
     scale=scale_for(size[0]+size[2],size[1]+size[2],325,150)
     front_left=45+size[2]*scale+35;front_top=48
     front_cx=front_left+size[0]*scale/2;front_cy=front_top+size[1]*scale/2
     right_cx=45+size[2]*scale/2;top_cy=front_top+size[1]*scale+30+size[2]*scale/2
-    _overview_view(out,part,(0,1),(1,1),2,front_cx,front_cy,scale,'正视图 · +Z')
-    _overview_view(out,part,(2,-1),(1,1),0,right_cx,front_cy,scale,'右视图 · +X')
-    _overview_view(out,part,(0,1),(2,-1),1,front_cx,top_cy,scale,'俯视图 · +Y')
+    _overview_view(out,part,(0,1),(1,1),2,front_cx,front_cy,scale,'正视 X/Y · +Z')
+    _overview_view(out,part,(2,-1),(1,1),0,right_cx,front_cy,scale,'侧视 Z/Y · +X')
+    _overview_view(out,part,(0,1),(2,-1),1,front_cx,top_cy,scale,'俯视 X/Z · +Y')
+    _overview_notes(out,part)
     out.append(text(17,242,'第一角法：右视图在左，俯视图在下；三视图比例 '+scale_name(scale),3))
     out.append(text(17,249,'净料 X × Y × Z = '+' × '.join(fmt(x) for x in size)+'；孔槽详见各加工面图。',3))
     sheets=[{'id':code,'part_id':part.get('id'),'title':title+' · 零件总图','sheet_type':'part','scale':scale_name(scale),'svg':finish(out)}]
@@ -215,7 +234,7 @@ def draw_part_sheets(part,project):
                 out.append(line(px,py,endx,endy,'thin')+text(endx+(1 if offset>0 else -1),endy-1,'/'.join(same),2.7,'start' if offset>0 else 'end','class="dimtext"'))
             tx=288;out.append(text(tx,38,'加工定位表',3.5));out.append(text(tx,45,'U / V 从 O 沿箭头方向量取',2.7));out.append(line(tx,49,402,49));out.append(text(tx+1,55,'编号',2.8)+text(tx+17,55,'U',2.8)+text(tx+38,55,'V',2.8)+text(tx+58,55,'孔径 / 深度',2.8))
             for idx,(label,f) in enumerate(page_rows):
-                yy=64+idx*12;out.append(line(tx,yy-5,402,yy-5));out.append(text(tx+1,yy,label,2.8)+text(tx+17,yy,fmt(f.get('u_mm')),2.8)+text(tx+38,yy,fmt(f.get('v_mm')),2.8));out.append(text(tx+58,yy,feature_label(part,f) if valid_feature(part,f) else '数据无效',2.6));out.append(text(tx+58,yy+4,'五金安装' if f.get('role')=='hardware_access' else '连接孔槽',2.3))
+                yy=64+idx*12;out.append(line(tx,yy-5,402,yy-5));out.append(text(tx+1,yy,label,2.8)+text(tx+17,yy,fmt(f.get('u_mm')),2.8)+text(tx+38,yy,fmt(f.get('v_mm')),2.8));out.append(text(tx+58,yy,feature_label(part,f) if valid_feature(part,f) else '数据无效',2.6));out.append(text(tx+58,yy+4,'五金安装孔' if f.get('role')=='hardware_access' else '连接孔槽',2.3))
             out.append(text(17,242,'加工面：'+FACE_NAMES[face]+'；展开坐标 U='+('XYZ'[a])+'，V='+('XYZ'[b])+'；深度向板内。',3))
             out.append(text(17,249,'面法向 '+('+' if face in POSITIVE else '−')+'XYZ'[n]+'；孔 U/V 为圆心，槽 U/V 为最小角。可钻深度 '+fmt(size[n])+' mm。',3))
             sheets.append({'id':page_code,'part_id':part.get('id'),'title':title+' · '+FACE_NAMES[face]+'加工','sheet_type':'machining','face':face,'scale':scale_name(sc),'svg':finish(out)})
