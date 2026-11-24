@@ -898,10 +898,10 @@ function renderMeasure(value) {
   const hud = $('measure-hud');
   if (!value) { hud.hidden = true; return; }
   hud.hidden = false;
-  if (value.pending) { hud.replaceChildren('起点已定 · 移到终点'); return; }
-  if (value.hover && value.distance_mm !== undefined) { hud.replaceChildren(el('strong', {}, fmt(value.distance_mm) + ' mm'), el('span', {}, '点击确定 · Esc 退出')); return; }
+  if (value.pending) { hud.replaceChildren('起点已定 · ' + (value.snap || '吸附') + ' · 移到终点'); return; }
+  if (value.hover && value.distance_mm !== undefined) { hud.replaceChildren(el('strong', {}, fmt(value.distance_mm) + ' mm'), el('span', {}, (value.snap || '') + ' · 点击确定 · Esc 退出')); return; }
   if (value.distance_mm !== undefined) {
-    hud.replaceChildren(el('strong', {}, fmt(value.distance_mm) + ' mm'), el('span', {}, '点击再测 · Esc 退出'));
+    hud.replaceChildren(el('strong', {}, fmt(value.distance_mm) + ' mm'), el('span', {}, (value.snap || '') + ' · 点击再测 · Esc 退出'));
   }
 }
 
@@ -910,12 +910,59 @@ function updateTools() {
   $('status-text').textContent = tool === 'measure' ? '测量中' : tool === 'translate' ? '拖动移动' : tool === 'rotate' ? '拖动旋转' : tool === 'advanced' ? '高级工具' : '编辑器';
 }
 
+function activeEditorIds(){return selectedIds.size?[...selectedIds]:selectedId?[selectedId]:[];}
+function editorIsolate() {
+  const ids = new Set(activeEditorIds());
+  if (!ids.size) throw new Error('先选中至少一个部件。');
+  for (const part of project.parts) viewport.setVisible(part.id, ids.has(part.id));
+  renderAdvancedPanel();
+}
+function editorShowAll() {
+  for (const part of project.parts) viewport.setVisible(part.id, true);
+  renderAdvancedPanel();
+}
+function editorHideSelected() {
+  const ids = activeEditorIds();
+  if (!ids.length) throw new Error('先选中至少一个部件。');
+  for (const id of ids) viewport.setVisible(id, false);
+  renderAdvancedPanel();
+}
+function editorExplode(exploded) { viewport.setExploded(exploded); renderAdvancedPanel(); }
+function editorMirror() {
+  if (!selectedId) throw new Error('先选中要镜像的部件。');
+  viewport.setTool('mirror');
+  renderAdvancedPanel();
+}
+function renderAdvancedPanel() {
+  const ids = activeEditorIds();
+  const button = (label, handler, disabled = false) => el('button', { type: 'button', disabled, onclick: () => { try { handler(); } catch (error) { showRightError(error.message); } } }, label);
+  $('right-title').textContent = '高级工具';
+  $('right-sub').textContent = ids.length ? ids.length + ' 个部件' : '未选择';
+  $('right-body').replaceChildren(
+    el('div', { class: 'advanced-tools' },
+      el('h3', {}, '显示与检查'),
+      el('div', { class: 'advanced-row' },
+        button('隔离选中', editorIsolate, !ids.length),
+        button('显示全部', editorShowAll),
+        button('隐藏选中', editorHideSelected, !ids.length)
+      ),
+      el('div', { class: 'advanced-row' },
+        button('拆开看', () => editorExplode(true)),
+        button('合上', () => editorExplode(false))
+      ),
+      el('h3', {}, '几何'),
+      el('div', { class: 'advanced-row' },
+        button('沿 X 镜像选中', editorMirror, !selectedId)
+      )
+    )
+  );
+  $('right-foot').hidden = true;
+}
 function setTool(next) {
   tool = next;
   if (next === 'advanced') {
-    $('right-body').replaceChildren(el('p', { class: 'error' }, '高级工具：选择对象后改尺寸/材料/连接。'));
-    $('right-title').textContent = '高级工具'; $('right-sub').textContent = 'P0';
-    $('right-foot').hidden = true;
+    viewport?.setTool('select');
+    renderAdvancedPanel();
     updateTools();
     return;
   }
@@ -923,7 +970,7 @@ function setTool(next) {
   viewport?.setTool(viewportTool);
   if (next === 'measure') {
     $('measure-hud').hidden = false;
-    $('measure-hud').replaceChildren('点选模型上的两个位置');
+    $('measure-hud').replaceChildren('点选端点或中点作为起点');
   } else if (next === 'translate' || next === 'rotate') {
     $('measure-hud').hidden = false;
     $('measure-hud').replaceChildren(next === 'translate' ? '拖动轴移动零件 · 松开后预览' : '拖动圆环旋转零件 · 松开后预览');

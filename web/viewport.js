@@ -9,7 +9,7 @@ const copy = value => structuredClone(value);
 
 export class WorkshopViewport {
   constructor(element, callbacks = {}) {
-    this.element = element; this.callbacks = callbacks; this.parts = []; this.meshes = []; this.mode = 'select'; this.selectedId = null; this.measurePoints = []; this.hiddenIds = new Set(); this.inspection = null; this.cameraMotion = null; this.hardwareData = []; this.hardwareObjects = []; this.hardwareVisible = true; this.exploded = false; this.partDisplayOffsets = new Map();
+    this.element = element; this.callbacks = callbacks; this.parts = []; this.meshes = []; this.mode = 'select'; this.selectedId = null; this.measurePoints = []; this.measureSnapTypes=[]; this.snapMarker=null; this.hiddenIds = new Set(); this.inspection = null; this.cameraMotion = null; this.hardwareData = []; this.hardwareObjects = []; this.hardwareVisible = true; this.exploded = false; this.partDisplayOffsets = new Map();
     this.joints=[];this.jointGroup=null;this.inspectionView=null;this.highlightIds=new Set();
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color('#eff1eb');
     this.camera = new THREE.PerspectiveCamera(40, 1, 1, 1000000); this.camera.position.set(1100, 850, 1300);
@@ -182,7 +182,7 @@ export class WorkshopViewport {
     this.partAt(event);
     const partHits = this.raycaster.intersectObjects(this.meshes.filter(mesh => mesh.visible),false), hit = partHits[0];
     // Measurement remains on woodworking surfaces, independent of the hardware layer.
-    if (this.mode === 'measure') { if (hit) this.addMeasurePoint(hit.point); return; }
+    if (this.mode === 'measure') { if (hit) { const snapped = this.snapPoint(hit); this.addMeasurePoint(snapped.point, snapped.type); } return; }
     if (this.callbacks.onSelectHardware || this.callbacks.onInspectJoint) {
       const hardwareHit = this.raycaster.intersectObjects(this.hardwareObjects.filter(object => object.visible && !this.hiddenIds.has(object.userData.hardware.part_id)),true)[0];
       // Only the explicit transparent inspection mode permits picking through wood.
@@ -201,29 +201,53 @@ export class WorkshopViewport {
     }
     this.setSelection(hit?.object.userData.partId || null,true,event);
   }
-  clearMeasurement() { this.clearHoverMeasure(); this.measurePoints = []; if (this.measureLine) { this.scene.remove(this.measureLine); this.release(this.measureLine); this.measureLine = null; } this.callbacks.onMeasure?.(null); }
+  clearMeasurement() { this.clearHoverMeasure(); this.clearSnapMarker(); this.measurePoints = []; this.measureSnapTypes = []; if (this.measureLine) { this.scene.remove(this.measureLine); this.release(this.measureLine); this.measureLine = null; } this.callbacks.onMeasure?.(null); }
+  snapPoint(hit) {
+    const point = hit.point.clone(), mesh = hit.object;
+    if (!mesh) return { point, type: '面' };
+    const box = new THREE.Box3().setFromObject(mesh);
+    if (box.isEmpty()) return { point, type: '面' };
+    const min = box.min, max = box.max;
+    const corners = [new THREE.Vector3(min.x,min.y,min.z),new THREE.Vector3(min.x,min.y,max.z),new THREE.Vector3(min.x,max.y,min.z),new THREE.Vector3(min.x,max.y,max.z),new THREE.Vector3(max.x,min.y,min.z),new THREE.Vector3(max.x,min.y,max.z),new THREE.Vector3(max.x,max.y,min.z),new THREE.Vector3(max.x,max.y,max.z)];
+    const mids = [];
+    for (let i=0;i<8;i++) for (let j=i+1;j<8;j++) { let diff=0; for (const axis of ['x','y','z']) if (Math.abs(corners[i][axis]-corners[j][axis])>1e-6) diff++; if (diff===1) mids.push(corners[i].clone().add(corners[j]).multiplyScalar(.5)); }
+    let best=null,bestType='',bestDistance=Infinity;
+    for (const candidate of corners) { const distance=candidate.distanceTo(point); if (distance<bestDistance) { best=candidate; bestType='端点'; bestDistance=distance; } }
+    for (const candidate of mids) { const distance=candidate.distanceTo(point); if (distance<bestDistance) { best=candidate; bestType='中点'; bestDistance=distance; } }
+    return bestDistance <= 38 ? { point: best, type: bestType } : { point, type: '面' };
+  }
+  showSnapMarker(point, type) {
+    if (!this.snapMarker) {
+      this.snapMarker = new THREE.Mesh(new THREE.SphereGeometry(6, 12, 12), new THREE.MeshBasicMaterial({color:this.palette.accent,depthTest:false}));
+      this.snapMarker.renderOrder = 101; this.scene.add(this.snapMarker);
+    }
+    this.snapMarker.position.copy(point); this.snapMarker.visible = true;
+  }
+  clearSnapMarker() { if (this.snapMarker) this.snapMarker.visible = false; }
   hoverMeasure(event) {
     if (this.mode !== 'measure' || this.measurePoints.length !== 1) return;
     const hit = this.partAt(event);
     if (!hit) { this.clearHoverMeasure(); return; }
-    const a = this.measurePoints[0], b = hit.point;
+    const snapped = this.snapPoint(hit), a = this.measurePoints[0], b = snapped.point;
+    this.showSnapMarker(b, snapped.type);
     if (!this.hoverMeasureLine) {
       this.hoverMeasureLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), new THREE.LineBasicMaterial({ color: 0xdf643e, transparent: true, opacity: 0.65, depthTest: false }));
       this.hoverMeasureLine.renderOrder = 98; this.scene.add(this.hoverMeasureLine);
     } else {
       this.hoverMeasureLine.geometry.setFromPoints([a, b]); this.hoverMeasureLine.geometry.attributes.position.needsUpdate = true;
     }
-    this.callbacks.onMeasure?.({ hover: true, distance_mm: a.distanceTo(b), points: [a.toArray(), b.toArray()] });
+    this.callbacks.onMeasure?.({ hover: true, distance_mm: a.distanceTo(b), points: [a.toArray(), b.toArray()], snap: snapped.type });
   }
   clearHoverMeasure() {
     if (this.hoverMeasureLine) { this.scene.remove(this.hoverMeasureLine); this.release(this.hoverMeasureLine); this.hoverMeasureLine = null; }
+    this.clearSnapMarker();
     if (this.mode === 'measure' && this.measurePoints.length === 1) this.callbacks.onMeasure?.({ pending: true });
   }
-  addMeasurePoint(point) {
-    if (this.measurePoints.length === 2) this.clearMeasurement(); this.measurePoints.push(point.clone());
-    if (this.measurePoints.length === 1) { this.callbacks.onMeasure?.({ pending:true }); return; }
+  addMeasurePoint(point, snapType = '面') {
+    if (this.measurePoints.length === 2) this.clearMeasurement(); this.measurePoints.push(point.clone()); this.measureSnapTypes.push(snapType);
+    if (this.measurePoints.length === 1) { this.callbacks.onMeasure?.({ pending:true, snap:snapType }); return; }
     this.clearHoverMeasure();
-    const [a,b] = this.measurePoints; this.measureLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:0xdf643e,depthTest:false})); this.measureLine.renderOrder=99; this.scene.add(this.measureLine); this.callbacks.onMeasure?.({ distance_mm:a.distanceTo(b), points:[a.toArray(),b.toArray()] });
+    const [a,b] = this.measurePoints; this.measureLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:0xdf643e,depthTest:false})); this.measureLine.renderOrder=99; this.scene.add(this.measureLine); this.callbacks.onMeasure?.({ distance_mm:a.distanceTo(b), points:[a.toArray(),b.toArray()], snap:[this.measureSnapTypes[0],this.measureSnapTypes[1]].filter(Boolean).join(' → ') });
   }
   commitTransform() {
     const mesh = this.transform.object; if (!mesh) return;

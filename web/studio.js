@@ -96,7 +96,7 @@ function heading(title,kicker=STAGES[stageIndex()]){body.append(el('div',{class:
 function references(){const grid=el('div',{class:'reference-grid'});for(const ref of state.project?.references||[]){const card=el('div',{class:'reference-card'+(ref.kind==='note'?' reference-note':'')});const local=API+base()+'/references/'+encodeURIComponent(ref.id);if(ref.kind==='image')card.append(el('img',{src:local,alt:ref.name,loading:'lazy'}));else if(ref.kind==='document')card.append(el('div',{class:'reference-file-icon'},'PDF'));if(ref.kind==='link')card.append(el('a',{href:ref.url,target:'_blank',rel:'noopener noreferrer'},ref.name||new URL(ref.url).hostname));else card.append(el('span',{},ref.name));if(ref.kind==='note')card.append(text(ref.text));grid.append(card);}return grid;}
 function components(){return detail('模型组成 · '+(shownProject()?.parts?.length||0)+' 件',el('div',{class:'components-list'},...(shownProject()?.parts||[]).map(part=>rawButton(part.name,()=>{state.selected=part.id;renderViewport();},{'aria-pressed':state.selected===part.id}))));}
 function checksDetail(checks=state.pkg?.checks||[]){return detail('检查结果与依据',el('div',{class:'check-detail'},...checks.map(c=>el('p',{class:c.severity==='blocker'?'blocker':''},c.message))));}
-function renderEntry(){heading('把喜欢的椅子，做成你的。');body.append(field('你的想法',state.idea,v=>state.idea=v,{multiline:true,placeholder:'直接写想复原的椅子、想保留的细节，或粘贴参考链接',maxlength:4000}));body.append(el('div',{class:'sample-entry'},el('h3',{},'先体验两把椅子'),el('small',{},'CAFE CHAIR 现成样例；PS 2026 为参考重建。'),el('div',{class:'row'},button('打开 CAFE CHAIR',loadDemo),button('打开 PS 2026',loadPs2026))));if(!state.project&&state.projects.length)body.append(detail('继续已有项目',el('div',{class:'project-list'},...state.projects.slice(0,8).map(p=>button(p.name,()=>openProject(p.id))))));const modelFile=el('input',{type:'file',accept:'.json,application/json',hidden:true,onChange:e=>action(()=>importModel(e.target.files[0]))});body.append(modelFile,button('打开已有模型文件',()=>modelFile.click(),false,{quiet:true}));footer(null,'开始复原',startReference);}
+function renderEntry(){heading('把喜欢的椅子，做成你的。');body.append(field('你的想法',state.idea,v=>state.idea=v,{multiline:true,placeholder:'写下想复原的椅子、使用场景和想改的地方；可以直接贴链接。',maxlength:4000}));body.append(el('div',{class:'sample-entry'},el('h3',{},'先体验两把椅子'),el('small',{},'CAFE CHAIR 现成样例；PS 2026 为参考重建。'),el('div',{class:'row'},button('打开 CAFE CHAIR',loadDemo),button('打开 PS 2026',loadPs2026))));if(!state.project&&state.projects.length)body.append(detail('继续已有项目',el('div',{class:'project-list'},...state.projects.slice(0,8).map(p=>button(p.name,()=>openProject(p.id))))));const modelFile=el('input',{type:'file',accept:'.json,application/json',hidden:true,onChange:e=>action(()=>importModel(e.target.files[0]))});body.append(modelFile,button('打开已有模型文件',()=>modelFile.click(),false,{quiet:true}));footer(null,'开始复原',startReference);}
 function renderWaiting(){const run=state.run;if(!run){heading('任务尚未开始');body.append(text('你的设计仍在，重新提交后继续。'));footer(state.project?.parts?.length?'M9':'R1','重新提交',retryRun);return;}
   const advice=run.requested_result_kind==='advice',failed=['failed','interrupted','stale','cancelled','dismissed'].includes(run.status);heading(run.status==='needs_input'?'还需要这一项信息':failed?'这次处理没有完成':advice?'正在为你考虑尺寸':'正在处理这把椅子');
   if(run.status==='needs_input'){body.append(text(run.question||run.stage),field('补充说明',state.answer,v=>state.answer=v,{multiline:true,placeholder:'补充这一项即可继续'}));footer(null,'提交并继续',answerRun);body.append(button('取消这次处理',cancelRun,false,{quiet:true}));return;}
@@ -108,33 +108,33 @@ function renderWaiting(){const run=state.run;if(!run){heading('任务尚未开�
 function renderRestore(){heading(state.proposal?'这是你想复原的椅子吗？':'这是你的原版设计');body.append(field('你的想法',state.editText,v=>state.editText=v,{multiline:true,placeholder:'想改哪里？直接写尺寸、结构、材料或参考。',maxlength:4000}));if(state.editText.trim())body.append(button('按这个想法修改',()=>startRun('modify',state.editText,'R4'),false,{quiet:true}));footer('R1','就用这版，继续',beginFit);}
 function renderRestoreEdit(){heading('哪里还不像？');body.append(text('在模型上选中相关部件，再描述要调整的地方。'),field('修改想法',state.editText,v=>state.editText=v,{multiline:true,placeholder:'例如：靠背要更窄，保留现在的倾角'}));footer('R4','让 AI 调整',async()=>{if(!state.editText.trim())throw new Error('写下需要调整的地方。');if(state.proposal)await dismissProposal();await startRun('modify',state.editText+(state.selected?'。选中部件：'+state.selected:''),'R4');});}
 function postureIcon(kind){
-  const body={upright:'<circle cx="33" cy="13" r="5"/><path d="M33 18v20M33 24l-9 7M33 24l9 7M33 38l-8 14M33 38l8 14"/><path d="M9 52h46M15 52V38M51 52V38" opacity=".35"/>',
-    reclined:'<circle cx="40" cy="19" r="5"/><path d="M38 24L21 36M28 31l-9 2M31 34l10 12M22 36l-7 12M15 48l30 3M10 51h44" opacity=".9"/><path d="M11 52V40h44" opacity=".35"/>',
-    leaning:'<circle cx="37" cy="14" r="5"/><path d="M36 19L29 38M33 27l-13 10M29 38l7 14M29 38l-11 13M21 52h31M18 52V38h38" opacity=".9"/>',
-    cross_legged:'<circle cx="32" cy="13" r="5"/><path d="M32 18v18M32 25l-11 9M32 25l12 8M32 36l-9 8 17 2M32 36l7 8M12 52h40" opacity=".9"/>'}[kind]||'';
-  return '<svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+body+'</svg>';
+  const body={upright:'<circle cx="31" cy="14" r="4"/><path d="M31 18v15l16 4v15l8 1"/><path d="M31 24l9 7"/><path d="M12 49h46M13 49V36"/>',
+    reclined:'<circle cx="21" cy="20" r="4"/><path d="M23 24l11 12 16 1v14l8 1"/><path d="M27 30l7 7"/><path d="M10 50h48M12 50V37l10-4"/>',
+    leaning:'<circle cx="29" cy="14" r="4"/><path d="M29 18l-2 16 17 4v14l8 1"/><path d="M27 25l-9 9"/><path d="M11 49h47M12 49V36"/>',
+    cross_legged:'<circle cx="29" cy="14" r="4"/><path d="M29 18v15l14 4-8 8 14 2"/><path d="M29 25l-9 7"/><path d="M11 50h47M13 50V38"/>'}[kind]||'';
+  const chair='<path d="M10 50h47M13 50V35h12" opacity=".28"/>';
+  return '<svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'+chair+body+'</svg>';
 }
-function figureDimension(label,value,onInput,style){
-  const input=el('input',{type:'text',inputMode:'decimal',value:value,'aria-label':label,onInput:e=>onInput(e.target.value)});
-  return el('label',{class:'figure-dim',style},el('span',{},label),el('div',{},input,el('small',{},'cm')));
+function bodyField(label,value,onInput){
+  return el('label',{class:'figure-field'},el('span',{},label),el('div',{},el('input',{type:'text',inputMode:'decimal',value:value,'aria-label':label,onInput:e=>onInput(e.target.value)}),el('small',{},'cm')));
 }
 function renderProfile(){heading('用你的身体，定义尺度。','MODULE · 模度');if(!module()){body.append(notice('还缺坐姿支撑定义','AI 需要先识别座面、靠背和关联部件，才有可核对的五项尺寸。'));footer('R4','让 AI 补充',()=>startRun('modify','给当前椅子补充 support Module，正确关联座面、靠背和支撑，提供五项适己尺寸的测量依据，不擅自改动原始几何。','F1'));return;}
   const p=profileDraft();
-  body.append(
-    el('div',{class:'body-figure'},
-      el('img',{src:'/static/modulor.svg',alt:'模度人：站姿身高、坐姿坐高、臀宽'}),
-      figureDimension('身高',''+p.height,v=>p.height=v,'left:3%;top:38%'),
-      figureDimension('坐高',''+p.sitting,v=>p.sitting=v,'right:2%;top:37%'),
-      figureDimension('臀宽',''+p.hip,v=>p.hip=v,'left:30%;top:66%')
-    ),
-    el('h3',{},'你习惯怎样坐？'),
-    el('div',{class:'postures'},...Object.entries(POSTURES).map(([key,label])=>{const icon=document.createElement('span');icon.className='posture-icon';icon.innerHTML=postureIcon(key);return el('label',{class:'posture'},el('input',{type:'radio',name:'posture',value:key,checked:p.posture===key,onChange:()=>p.posture=key}),icon,el('span',{},label));})),
-    el('div',{class:'scenario-box'},el('label',{class:'field'},'使用场景和需求 · 告诉 AI',el('textarea',{value:state.profileNotes,placeholder:'比如：我的屁股比较大；我十岁的侄子也要坐我的椅子。',onInput:e=>state.profileNotes=e.target.value})))
-  );
-  footer('R4','保存，查看建议',saveProfile);
+  body.append(el('div',{class:'body-profile-grid'},el('div',{class:'body-figure'},el('img',{src:'/static/modulor.svg',alt:'模度人：站姿身高、坐姿坐高、臀宽'})),el('div',{class:'figure-fields'},bodyField('身高',p.height,v=>p.height=v),bodyField('坐高',p.sitting,v=>p.sitting=v),bodyField('臀宽',p.hip,v=>p.hip=v))));
+  footer('R4','下一步：坐姿与场景',()=>navigate('F6'));
+}
+function renderProfilePosture(){
+  heading('你习惯怎样坐？','MODULE · 姿态');
+  const p=profileDraft();
+  const postures=el('div',{class:'postures'},...Object.entries(POSTURES).map(([key,label])=>{
+    const icon=document.createElement('span');icon.className='posture-icon';icon.innerHTML=postureIcon(key);
+    return el('label',{class:'posture'},el('input',{type:'radio',name:'posture',value:key,checked:p.posture===key,onChange:()=>p.posture=key}),icon,el('span',{},label));
+  }));
+  const scenario=el('div',{class:'scenario-box'},el('label',{class:'field'},'使用场景和需求 · 告诉 AI',el('textarea',{value:state.profileNotes,placeholder:'比如：我 170 cm，坐久了腰酸；十岁的侄子也会坐；放在阳台，偶尔晒太阳。',onInput:e=>state.profileNotes=e.target.value})));
+  body.append(postures,scenario);
+  footer('F1','保存，查看建议',saveProfile);
   body.append(button('保持原尺寸，查看尺寸总览',()=>{state.dimensionIndex=0;setDimensionPending();navigate('F5');},false,{quiet:true}));
 }
-
 function renderDimension(){
   const item=dim();heading(item?.label||'尺寸','MODULE · 逐项尺寸');
   if(!item){body.append(text('当前模型没有可以核对的座面尺寸。'));footer('F1','请 AI 补充',()=>startRun('modify','补充座面、靠背及 support Module，使座高、座宽、座深、座面倾角和座背夹角可测量。','F1'));return;}
@@ -300,7 +300,7 @@ function renderContext(){
   }
 }
 function render(){const index=stageIndex();document.body.dataset.stage=STAGES[index];document.body.dataset.page=state.page;body.replaceChildren();actions.replaceChildren();$('step-error').textContent=state.error;$('step-error').hidden=!state.error;$('stage-nav').replaceChildren(...STAGES.map((label,i)=>el('button',{type:'button','aria-current':i===index?'step':null,disabled:state.busy,onClick:()=>action(()=>switchStage(i))},el('span',{},String(i+1).padStart(2,'0')),label)));
-  if(state.page==='settings')renderSettings();else if(state.page.startsWith('P'))renderPackage();else if(['R2','F2','M4'].includes(state.page))renderWaiting();else ({R1:renderEntry,R4:renderRestore,R5:renderRestoreEdit,F1:renderProfile,F3:renderDimension,F4:renderConflict,F5:renderSizeSummary,M1:renderMethods,M2:renderBoard,M3:renderMethodEdit,M5:renderMethodPreview,M8:renderNode,M9:renderMethodSummary,M6:renderUnresolved}[state.page]||renderEntry)();
+  if(state.page==='settings')renderSettings();else if(state.page.startsWith('P'))renderPackage();else if(['R2','F2','M4'].includes(state.page))renderWaiting();else ({R1:renderEntry,R4:renderRestore,R5:renderRestoreEdit,F1:renderProfile,F6:renderProfilePosture,F3:renderDimension,F4:renderConflict,F5:renderSizeSummary,M1:renderMethods,M2:renderBoard,M3:renderMethodEdit,M5:renderMethodPreview,M8:renderNode,M9:renderMethodSummary,M6:renderUnresolved}[state.page]||renderEntry)();
   renderViewport();renderContext();renderAIRail();renderBusy();$('project-picker').value=state.project?.id||'';const modeEditor=$('mode-editor');if(modeEditor)modeEditor.href=state.project?.parts?.length?'/editor?project='+encodeURIComponent(state.project.id):'/editor';
 }
 
@@ -362,7 +362,7 @@ function renderViewport(){if(!viewport)return;const project=shownProject(),pkg=s
   if(state.page==='F3'||state.page==='F5')setViewportDimension();else viewport.setDimensions(state.page==='M9'&&state.summaryKind==='board'?boardDimensions():[]);
   if(state.proposal&&['R4','R5','F3','M5'].includes(state.page))overlay.append(el('div',{class:'viewport-status'},el('span',{},state.previewOriginal?'原方案':'候选预览 · 尚未采用')));
   if(state.selected&&!group){const part=parts.find(p=>p.id===state.selected);if(part)overlay.append(el('div',{class:'selection-bar'},el('strong',{},part.name),rawButton('聚焦',()=>viewport.focus(part.id)),rawButton('取消',()=>{state.selected=null;renderViewport();})));}
-  if(state.tool==='measure')overlay.append(el('div',{class:'viewport-status'},el('span',{id:'measure-readout'},'点选模型上的两个位置')));
+  if(state.tool==='measure')overlay.append(el('div',{class:'viewport-status'},el('span',{id:'measure-readout'},'点选端点或中点作为起点')));
   $('viewport').dataset.parts=parts.length;$('viewport').dataset.revision=project.revision;$('viewport').dataset.seatHeight=dimensions().find(d=>d.key==='seat_height_mm')?.current_value??'';
 }
 
@@ -373,7 +373,7 @@ function isolateSelection(){
 }
 function showAllParts(){for(const part of shownProject()?.parts||[])viewport.setVisible(part.id,true);state.isolated=false;}
 function toggleExploded(){state.exploded=!state.exploded;viewport.setExploded(state.exploded);renderViewport();}
-function initializeViewport(){try{viewport=new WorkshopViewport($('viewport'),{onSelect:id=>{state.selected=id;if(state.page==='M9'&&state.summaryKind==='board'&&id){const index=boardGroups().findIndex(g=>g.part_ids.includes(id));if(index>=0){state.summaryIndex=index;render();return;}}renderViewport();},onMeasure:value=>{const readout=$('measure-readout');if(readout)readout.textContent=value?.pending?'再点选第二个位置':value?.distance_mm!==undefined?format(value.distance_mm)+' mm':'点选模型上的两个位置';},onError:report});}catch(error){$('viewport-empty').replaceChildren(el('h2',{},'三维视口未能启动'),text('请使用支持 WebGL 的浏览器，或启用硬件加速后重新打开。'));report(error);}}
+function initializeViewport(){try{viewport=new WorkshopViewport($('viewport'),{onSelect:id=>{state.selected=id;if(state.page==='M9'&&state.summaryKind==='board'&&id){const index=boardGroups().findIndex(g=>g.part_ids.includes(id));if(index>=0){state.summaryIndex=index;render();return;}}renderViewport();},onMeasure:value=>{const readout=$('measure-readout');if(!readout)return;if(!value){readout.textContent='点选端点或中点';return;}if(value.pending){readout.textContent='起点已定'+(value.snap?' · '+value.snap:'')+' · 移到终点';return;}if(value.distance_mm!==undefined){readout.textContent=format(value.distance_mm)+' mm'+(value.snap?' · '+value.snap:'')+(value.hover?' · 点击确定':' · 点击再测 / Esc 退出');}},onError:report});}catch(error){$('viewport-empty').replaceChildren(el('h2',{},'三维视口未能启动'),text('请使用支持 WebGL 的浏览器，或启用硬件加速后重新打开。'));report(error);}}
 async function boot(){initializeViewport();$('new-project').addEventListener('click',()=>action(async()=>{if(state.run&&ACTIVE.has(state.run.status))throw new Error('先取消当前处理，再开始新设计。');state.project=null;state.review=null;state.pkg=null;state.proposal=null;state.run=null;state.files=[];state.referenceUrl='';state.idea='';state.exported=null;state.packageProject=null;state.profile=null;state.profileNotes='';state.undo=[];state.redo=[];navigate('R1');}));$('settings-button').addEventListener('click',()=>action(()=>openSettings()));$('project-picker').addEventListener('change',e=>{if(e.target.value)action(()=>openProject(e.target.value));});window.addEventListener('popstate',()=>{const p=new URLSearchParams(location.hash.slice(1)),page=p.get('step');if(p.get('project')&&p.get('project')!==state.project?.id)action(()=>openProject(p.get('project'),page));else if(page){state.page=page.startsWith('P')&&!state.exported?'M9':page;render();}});
   try{const [ai,profile]=await Promise.all([api('/ai/status'),api('/profile')]);state.ai=ai;state.savedProfile=profile;await listProjects();const params=new URLSearchParams(location.hash.slice(1)),id=params.get('project')||localStorage.getItem('junior-studio-last');if(id&&state.projects.some(p=>p.id===id))await openProject(id,params.get('step'));else render();}catch(error){report(error);render();}}
 boot();
